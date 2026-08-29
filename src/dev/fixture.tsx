@@ -52,6 +52,43 @@ export default greet;
 ![missing](./assets/nope.png)
 `;
 
+
+// Deliberately built so rendered height and source height diverge: a table that
+// is tall in source and compact on screen, fences that are the reverse, and
+// prose in between. Percentage-based scroll sync looks fine on uniform text and
+// falls apart here, which is the point.
+const LONG = Array.from({ length: 9 }, (_, i) => {
+  const n = i + 1;
+  if (n % 3 === 0) {
+    return [
+      `## Section ${n}`,
+      '',
+      '```js',
+      ...Array.from({ length: 12 }, (_, k) => `const value${k} = ${k} * ${n};`),
+      '```',
+      '',
+    ].join('\n');
+  }
+  if (n % 3 === 1) {
+    return [
+      `## Section ${n}`,
+      '',
+      '| Key | Value |',
+      '| --- | --- |',
+      ...Array.from({ length: 8 }, (_, k) => `| row ${k} | ${k * n} |`),
+      '',
+    ].join('\n');
+  }
+  return [
+    `## Section ${n}`,
+    '',
+    Array.from({ length: 5 }, () => 'Prose that wraps across several lines when the pane is narrow.').join(' '),
+    '',
+  ].join('\n');
+}).join('\n');
+
+const LONG_NOTE = `# Scroll sync\n\n${LONG}`;
+
 const SECOND = `# Second note
 
 You got here by clicking a link inside another note.
@@ -64,12 +101,17 @@ const DOT_PNG =
 const tree: Record<string, TreeEntry[]> = {
   '': [
     { name: 'notes', path: 'notes', kind: 'directory' },
+    { name: 'Long.md', path: 'Long.md', kind: 'file' },
     { name: 'Welcome.md', path: 'Welcome.md', kind: 'file' },
   ],
   notes: [{ name: 'Second.md', path: 'notes/Second.md', kind: 'file' }],
 };
 
-const files: Record<string, string> = { 'Welcome.md': WELCOME, 'notes/Second.md': SECOND };
+const files: Record<string, string> = {
+  'Welcome.md': WELCOME,
+  'Long.md': LONG_NOTE,
+  'notes/Second.md': SECOND,
+};
 
 const fakeVault: VaultAdapter = {
   name: 'demo-vault',

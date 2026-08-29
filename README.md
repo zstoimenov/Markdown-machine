@@ -6,8 +6,13 @@ already are.
 
 ## Status
 
-M0 (scaffold) and M1 (reading) are done: open a folder, browse it, read rendered notes.
-Editing arrives in M2. See [docs/PLAN.md](docs/PLAN.md) for the plan and the milestones.
+M0–M2 are done: open a folder, browse it, and edit notes in a split view with a
+scroll-synced live preview.
+
+**Edits are not written to disk yet** — that is M3. Leaving a modified note asks before
+discarding it, and reloading the page warns, but nothing is saved. The status bar says so.
+
+See [docs/PLAN.md](docs/PLAN.md) for the plan and the milestones.
 
 ## Requirements
 
@@ -31,3 +36,13 @@ Then open the printed URL and choose a folder of markdown files.
 The native folder picker can't be scripted, so `/dev-fixture.html` (dev server only) mounts
 the real app against an in-memory vault — useful for working on the tree, the renderer or
 the styling without clicking through a picker each reload.
+
+`scripts/smoke.mjs` drives that fixture in a real browser and checks the read and edit paths
+end to end. Playwright is not a dependency, since installing it pulls a browser download, so
+run it on demand:
+
+```sh
+npm install --no-save playwright && npx playwright install chromium
+npm run dev                     # in another terminal
+node scripts/smoke.mjs
+```

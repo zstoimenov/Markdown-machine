@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useVault } from './state/vaultStore';
+import { isDirty, useVault } from './state/vaultStore';
 import { FileTree } from './components/FileTree';
-import { Preview } from './components/Preview';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
+import { Workspace, useUnsavedChangesWarning } from './components/Workspace';
 
 function Splash({
   title,
@@ -31,6 +31,7 @@ export function App() {
   const activePath = useVault((s) => s.activePath);
   const source = useVault((s) => s.source);
   const loadingFile = useVault((s) => s.loadingFile);
+  const dirty = useVault(isDirty);
   const init = useVault((s) => s.init);
   const pick = useVault((s) => s.pick);
   const reopen = useVault((s) => s.reopen);
@@ -38,6 +39,8 @@ export function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  useUnsavedChangesWarning(dirty);
 
   if (status === 'checking') return <div className="splash" />;
 
@@ -104,11 +107,11 @@ export function App() {
         </aside>
         <main className="reader">
           {activePath === null && (
-            <p className="reader-empty">Pick a note from the sidebar to read it.</p>
+            <p className="reader-empty">Pick a note from the sidebar to open it.</p>
           )}
           {activePath !== null && loadingFile && <p className="reader-empty">Opening…</p>}
           {activePath !== null && !loadingFile && source !== null && (
-            <Preview key={activePath} source={source} path={activePath} />
+            <Workspace key={activePath} path={activePath} source={source} />
           )}
         </main>
       </div>

@@ -130,9 +130,12 @@ body {
   padding: 8px 0;
 }
 
+/* The panes scroll, not the shell — otherwise the editor and the preview would
+   share one scrollbar and there would be nothing to keep in sync. */
 .reader {
-  overflow-y: auto;
+  overflow: hidden;
   min-width: 0;
+  display: flex;
 }
 
 .reader-empty {
@@ -157,11 +160,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status-mode {
-  margin-left: auto;
-  color: var(--text-faint);
 }
 
 .status-error {
@@ -517,4 +515,102 @@ body {
 }
 .hljs-strong {
   font-weight: 600;
+}
+
+
+/* ---------- Split view ---------- */
+
+.split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.pane {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.pane-editor {
+  flex: none;
+  border-right: 1px solid var(--border);
+}
+
+.pane-preview {
+  flex: 1;
+}
+
+/* In single-pane modes the editor stops being width-constrained by the divider. */
+.split > .pane-editor:only-child {
+  flex: 1;
+}
+
+.editor {
+  height: 100%;
+}
+
+.divider {
+  flex: none;
+  width: 5px;
+  margin: 0 -2px;
+  z-index: 1;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.divider:hover,
+body.is-dragging .divider {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+/* The divider holds pointer capture for the duration of the drag, so the only
+   thing left to suppress is text selection sweeping across both panes. */
+body.is-dragging {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* ---------- Segmented control ---------- */
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segment {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 0;
+  border-right: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.segment:last-child {
+  border-right: 0;
+}
+
+.segment:hover {
+  color: var(--text);
+}
+
+.segment.is-on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ---------- Save state ---------- */
+
+.status-save {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.status-save.is-dirty {
+  color: var(--accent);
 }

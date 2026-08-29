@@ -20,6 +20,8 @@ export type VaultStatus =
   | 'needs-permission'
   | 'ready';
 
+export type ViewMode = 'split' | 'editor' | 'preview';
+
 interface VaultState {
   status: VaultStatus;
   adapter: VaultAdapter | null;
@@ -31,8 +33,12 @@ interface VaultState {
   expanded: Set<string>;
   loadingDirs: Set<string>;
   activePath: string | null;
+  /** The file as it is on disk. */
   source: string | null;
+  /** The buffer being edited. Equal to `source` until something is typed. */
+  draft: string | null;
   loadingFile: boolean;
+  viewMode: ViewMode;
   error: string | null;
 
   init: () => Promise<void>;
@@ -41,6 +47,16 @@ interface VaultState {
   close: () => Promise<void>;
   toggleDir: (path: string) => Promise<void>;
   openFile: (path: string) => Promise<void>;
+  setDraft: (value: string) => void;
+  setViewMode: (mode: ViewMode) => void;
+}
+
+/** True when the buffer has diverged from what is on disk. */
+export function isDirty(state: {
+  source: string | null;
+  draft: string | null;
+}): boolean {
+  return state.draft !== null && state.source !== null && state.draft !== state.source;
 }
 
 function describe(error: unknown): string {
@@ -66,6 +82,7 @@ export const useVault = create<VaultState>((set, get) => {
       loadingDirs: new Set<string>(),
       activePath: null,
       source: null,
+      draft: null,
       error: null,
     });
   }
@@ -80,7 +97,9 @@ export const useVault = create<VaultState>((set, get) => {
     loadingDirs: new Set<string>(),
     activePath: null,
     source: null,
+    draft: null,
     loadingFile: false,
+    viewMode: 'split',
     error: null,
 
     async init() {
@@ -139,6 +158,7 @@ export const useVault = create<VaultState>((set, get) => {
         loadingDirs: new Set<string>(),
         activePath: null,
         source: null,
+        draft: null,
         error: null,
       });
     },
@@ -176,22 +196,43 @@ export const useVault = create<VaultState>((set, get) => {
     },
 
     async openFile(path) {
-      const { adapter } = get();
-      if (!adapter) return;
-      set({ activePath: path, loadingFile: true, error: null });
+      const state = get();
+      if (!state.adapter || state.activePath === path) return;
+
+      // Saving does not exist until M3, so leaving a modified note drops the edits.
+      // Losing someone's typing silently is not an acceptable way to find that out.
+      if (isDirty(state)) {
+        const discard = window.confirm(
+          `"${state.activePath}" has unsaved changes.\n\n` +
+            'Writing back to disk is not implemented yet, so leaving this note ' +
+            'discards them. Leave anyway?',
+        );
+        if (!discard) return;
+      }
+
+      set({ activePath: path, loadingFile: true, source: null, draft: null, error: null });
       try {
-        const source = await adapter.readFile(path);
+        const source = await state.adapter.readFile(path);
         // Guard against a slow read landing after the user clicked elsewhere.
         if (get().activePath !== path) return;
-        set({ source, loadingFile: false });
+        set({ source, draft: source, loadingFile: false });
       } catch (error) {
         if (get().activePath !== path) return;
         set({
           loadingFile: false,
           source: null,
+          draft: null,
           error: `Could not open ${path}: ${describe(error)}`,
         });
       }
+    },
+
+    setDraft(value) {
+      set({ draft: value });
+    },
+
+    setViewMode(mode) {
+      set({ viewMode: mode });
     },
   };
 });
