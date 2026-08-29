@@ -45,14 +45,43 @@ directly in your browser through the File System Access API — nothing is uploa
 is no server to upload to. The folder you pick is remembered per origin, so the hosted app
 and a local `npm run dev` keep separate ones.
 
+## Repairing damaged markdown
+
+LLM tools sometimes write their transport envelope into the file instead of the content it
+was carrying. The note arrives as a JSON object, or with JSON fragments sitting in the
+prose, and with `\n` written as two literal characters rather than a line break — so the
+whole thing collapses into one unbroken paragraph.
+
+Opening such a file offers to fix it, saying first what it would change. **Fix markdown**
+in the sidebar does the same on demand for a file that was not flagged. It:
+
+- unwraps a JSON envelope and pulls out the content it was carrying
+- turns literal `\n`, `\t` and `\"` back into real characters
+- replaces embedded JSON fragments with whatever prose they held, and drops the rest
+- splits a single flattened blob back into headings, lists and fences
+- tidies blank lines around headings
+
+The repair rewrites the **editor buffer, not the file**, so you read the result before it is
+kept — and a single `Ctrl`/`Cmd`+`Z` takes all of it back. JSON inside a code fence or an
+inline span is left alone, and a healthy file is never touched.
+
+One thing it cannot do: once the newline between a heading and its body is gone,
+`## Notes Body text here` reads the same either way, so the heading keeps the whole run for
+you to break by hand. Guessing would be worse.
+
 ## Requirements
 
-A Chromium-based desktop browser — Chrome, Edge, Brave, Arc or Opera. Folder access uses
-the File System Access API, which Firefox and Safari have not shipped.
+**Desktop:** a Chromium browser — Chrome, Edge, Brave, Arc or Opera. Folder access uses the
+File System Access API, which Firefox and Safari have not shipped.
 
-Those browsers get a fallback rather than a dead end: drop in a single `.md` file, read and
-edit it, and download a copy. It cannot save in place, because the browser gives no handle
-to write back through — which is the whole reason the folder version is the real one.
+**Phones and tablets, including Android Chrome:** the File System Access API is desktop-only,
+so there is no folder mode on mobile at all. What you get instead is the single-file
+fallback: open one `.md` file, read it, edit it, download a copy. It cannot save in place,
+because the browser gives no handle to write back through.
+
+The layout adapts to phone widths either way — the file tree becomes a drawer, the split
+view collapses to a single pane that lands on the rendered note, and touch targets and the
+editor's type size are sized for a thumb.
 
 ## Running it
 

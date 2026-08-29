@@ -300,6 +300,88 @@ check('no folder actions are offered', (await fallback.getByRole('button', { nam
 await fallback.screenshot({ path: `${SP}/smoke-fallback.png` });
 await fallback.close();
 
+// ---------- Repairing damaged markdown ----------
+await page.getByRole('button', { name: 'Broken.md' }).click();
+await page.waitForSelector('.notice-repair');
+check('a damaged file is spotted on open', (await page.locator('.notice-repair').innerText()).includes('looks damaged'));
+check('and the offer says what it would do', (await page.locator('.notice-repair').innerText()).includes('JSON'));
+await page.screenshot({ path: `${SP}/smoke-repair.png` });
+
+await page.getByRole('button', { name: 'Fix markdown' }).first().click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Broken note');
+const repaired = await page.locator('.cm-content').innerText();
+check('the JSON envelope is gone', !repaired.includes('msg_01') && !repaired.includes('assistant'));
+check('escaped newlines became real ones', repaired.split('\n').length > 5);
+check('the embedded fragment kept its prose', repaired.includes('The first finding.'));
+check('and lost its JSON', !repaired.includes('"type"'));
+check('the preview now renders structure', (await page.locator('.prose h2').innerText()) === 'Findings');
+check('list items survived', (await page.locator('.prose li').count()) === 2);
+check('the offer clears once taken', (await page.locator('.notice-repair').count()) === 0);
+
+// A repair is one transaction, so one undo takes all of it back.
+await page.locator('.cm-content').click();
+await page.keyboard.press('Control+z');
+check('a single undo reverses the whole repair', (await page.locator('.cm-content').innerText()).includes('msg_01'));
+await page.keyboard.press('Control+y');
+// Let autosave settle, or switching files hits the unsaved-changes confirm.
+await waitForSaved();
+
+// A healthy file is never flagged.
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
+check('a healthy file is left alone', (await page.locator('.notice-repair').count()) === 0);
+
+// ---------- Phone layout (OnePlus 12) ----------
+const phone = await browser.newPage({
+  viewport: { width: 412, height: 915 },
+  deviceScaleFactor: 3.5,
+  isMobile: true,
+  hasTouch: true,
+});
+await phone.addInitScript(() => {
+  // Chrome for Android has no File System Access API, so this is what the app
+  // actually meets on the device — the folder path is not available there.
+  delete window.showDirectoryPicker;
+});
+await phone.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+check('the phone gets the single-file path', await phone.locator('.dropzone').isVisible());
+check('no horizontal overflow on the splash', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+
+await phone.setInputFiles('input[type=file]', {
+  name: 'Phone.md',
+  mimeType: 'text/markdown',
+  buffer: Buffer.from('# On the phone\n\nBody text.\n\n- one\n- two\n'),
+});
+await phone.waitForSelector('.prose h1');
+check('a phone lands on the rendered note, not the source', (await phone.locator('.prose h1').innerText()) === 'On the phone');
+check('no horizontal overflow with a note open', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+check('split view is not offered on a phone', (await phone.getByRole('button', { name: 'Split' }).count()) === 0);
+check('the tree is a drawer, hidden until asked for', await phone.evaluate(() => getComputedStyle(document.querySelector('.sidebar')).visibility) === 'hidden');
+
+await phone.getByRole('button', { name: 'Notes' }).tap();
+await phone.waitForFunction(() => getComputedStyle(document.querySelector('.sidebar')).visibility === 'visible');
+check('the drawer opens on tap', true);
+await phone.screenshot({ path: `${SP}/smoke-phone-drawer.png` });
+
+await phone.locator('.tree-row', { hasText: 'Phone.md' }).tap();
+await phone.waitForFunction(() => getComputedStyle(document.querySelector('.sidebar')).visibility === 'hidden');
+check('choosing a note closes the drawer', true);
+
+const targets = await phone.evaluate(() =>
+  [...document.querySelectorAll('.toolbar button, .segment, .icon-button')]
+    .map((el) => el.getBoundingClientRect().height)
+    .filter((h) => h > 0),
+);
+check('toolbar targets are thumb-sized', Math.min(...targets) >= 30, `min ${Math.min(...targets)}px`);
+
+await phone.getByRole('button', { name: 'Write' }).tap();
+await phone.waitForSelector('.cm-scroller');
+const editorFont = await phone.evaluate(() => getComputedStyle(document.querySelector('.cm-scroller')).fontSize);
+check('the editor does not trigger zoom-on-focus', parseFloat(editorFont) >= 16, editorFont);
+check('no horizontal overflow while editing', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+await phone.screenshot({ path: `${SP}/smoke-phone.png` });
+await phone.close();
+
 console.log(problems.length ? '\nBrowser problems:\n' + problems.join('\n') : '\nNo console or page errors.');
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
 await browser.close();

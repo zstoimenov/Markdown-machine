@@ -5,8 +5,10 @@ import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { Workspace } from './components/Workspace';
 import { ConflictBar } from './components/ConflictBar';
+import { RepairBar } from './components/RepairBar';
 import { EmptyState } from './components/EmptyState';
 import { FilePicker } from './components/FilePicker';
+import { useIsNarrow } from './hooks/useMediaQuery';
 import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave';
 
 function Splash({
@@ -36,6 +38,9 @@ export function App() {
   const source = useVault((s) => s.source);
   const loadingFile = useVault((s) => s.loadingFile);
   const dirty = useVault(isDirty);
+  const narrow = useIsNarrow();
+  const sidebarOpen = useVault((s) => s.sidebarOpen);
+  const setSidebarOpen = useVault((s) => s.setSidebarOpen);
   const mode = useVault((s) => s.mode);
   const canWrite = useVault((s) => s.canWrite);
   const enableWriting = useVault((s) => s.enableWriting);
@@ -129,10 +134,21 @@ export function App() {
         </div>
       )}
       <ConflictBar />
+      <RepairBar />
       <div className="workspace">
-        <aside className="sidebar">
+        {/* When closed at phone widths the drawer is `visibility: hidden`, which
+            takes its buttons out of the tab order without a React 18 `inert`. */}
+        <aside className={`sidebar${narrow && sidebarOpen ? ' is-open' : ''}`}>
           <FileTree />
         </aside>
+        {narrow && sidebarOpen && (
+          <button
+            type="button"
+            className="scrim"
+            aria-label="Close notes"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         <main className="reader">
           {activePath === null && <EmptyState message="Pick a note from the sidebar to open it." />}
           {activePath !== null && loadingFile && <p className="reader-empty">Opening…</p>}

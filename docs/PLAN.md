@@ -236,7 +236,50 @@ so autosave never runs and the banner says why.
 **Discoverability.** The shortcut sheet shows on the empty state, with the modifier spelled
 the way the current keyboard has it printed.
 
-## 9. Known issues
+## 9. Beyond the plan
+
+Two things asked for after the original five milestones.
+
+### Repairing LLM-damaged markdown
+
+`src/markdown/repair.ts` is a pure pipeline over a string: unwrap a JSON envelope, unescape
+literal `\n`, replace embedded transport fragments with the prose they carried, reblock a
+flattened blob, tidy spacing. Every structural pass runs with fenced and inline code masked
+out, because code is the one place where a JSON fragment is the content rather than the damage.
+
+Two design choices worth keeping:
+
+- **It rewrites the buffer, never the file**, and does it as one CodeMirror transaction. So
+  the result is reviewable, autosave carries it to disk only after that, and one `Ctrl+Z`
+  reverses the whole thing. A repair is a suggestion, not something done to someone's notes
+  behind their back.
+- **Detection is deliberately conservative.** Unescaping only fires when literal `\n`
+  outnumbers real newlines, so a note that merely mentions `\n` is untouched; a JSON object
+  with no envelope keys and no extractable text is assumed to be content the author meant to
+  include; and spacing-only changes never raise the banner, since the file already renders.
+
+Being pure logic that can corrupt notes if it regresses, it is unit-tested properly —
+17 cases under `tests/`, run by `npm test` with Node's own test runner and type stripping,
+so no test framework was added. It gates the Pages deploy.
+
+Its one real limit is recorded in the code and the README: once the newline between a
+heading and its body is gone, the boundary is unrecoverable, so the heading keeps the run.
+
+### Phone layout
+
+The file tree becomes a drawer, the split view collapses to a single pane, touch targets
+grow, the editor sits at 16px so focusing it does not zoom, `100dvh` keeps the status bar
+on screen as browser chrome moves, and the status bar clears the gesture bar via
+`env(safe-area-inset-bottom)`.
+
+**The important finding is that mobile cannot have the folder mode at all.** The File System
+Access API is desktop-only — Chrome for Android does not implement it — so a phone always
+lands in the single-file fallback built in M4. That makes the fallback the main mobile
+experience rather than an edge case, which is why a phone now opens on the *rendered* note
+rather than the source: reading is what most phone visits are for, and there is nothing to
+save into anyway.
+
+## 10. Known issues
 
 - **No syntax highlighting inside editor code fences.** Still deferred, and now
   deliberately: `@codemirror/language-data` means a lazy chunk per language and six more
@@ -249,9 +292,14 @@ the way the current keyboard has it printed.
 - **Directories cannot be created, renamed or deleted.** Only files. Folder operations were
   not in any milestone and adding them would widen the destructive surface.
 - **The single-file fallback cannot show images.** Relative image paths need the folder the
-  file sits in, which is exactly what that browser will not hand over.
+  file sits in, which is exactly what that browser will not hand over. This bites hardest on
+  mobile, where the fallback is the only mode available.
+- **The repair cannot recover a heading's title/body boundary** in a fully flattened blob.
+  See section 9.
+- **Only one file at a time on mobile.** A multi-select file picker would give phones a
+  small library rather than a single note; not built, because it was not asked for.
 
-## 10. Risks and how they're handled
+## 11. Risks and how they're handled
 
 - **Permission re-grant on reload.** Browsers drop write permission between sessions.
   Handled with a single "Reopen `<folder>`" button on launch rather than a silent failure.
@@ -266,7 +314,7 @@ the way the current keyboard has it printed.
 - **Scroll-sync jank.** Line-to-block mapping via `markdown-it` source maps rather than
   naive percentage scrolling, which drifts badly on long documents.
 
-## 11. Open questions (not blocking — I'll assume the first answer)
+## 12. Open questions (not blocking — I'll assume the first answer)
 
 1. **Frontmatter** — YAML frontmatter hidden from the preview and shown as a small
    metadata strip? *Assumed: yes, hidden from preview.*

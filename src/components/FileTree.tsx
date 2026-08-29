@@ -67,11 +67,23 @@ export function FileTree() {
   const createNote = useVault((s) => s.createNote);
   const renameActive = useVault((s) => s.renameActive);
   const deleteActive = useVault((s) => s.deleteActive);
+  const repairActive = useVault((s) => s.repairActive);
 
   if (!roots) return null;
 
   return (
     <>
+      <div className="tree-actions">
+        <button
+          type="button"
+          className="link-button"
+          disabled={activePath === null}
+          title="Rewrite this note's markdown, fixing JSON artefacts and escaped line breaks"
+          onClick={repairActive}
+        >
+          Fix markdown
+        </button>
+      </div>
       {canWrite && (
         <div className="tree-actions">
           <button type="button" className="link-button" onClick={() => void createNote()}>
