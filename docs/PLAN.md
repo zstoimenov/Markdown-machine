@@ -267,27 +267,27 @@ heading and its body is gone, the boundary is unrecoverable, so the heading keep
 
 ### Symbols counter and copying out
 
-`src/markdown/plaintext.ts` walks markdown-it's token stream rather than scraping the
-rendered DOM, so it stays a pure function and can be unit-tested. It emits `•` bullets,
-numbered lists, `>` quotes, `☐`/`☑` task items, link targets written out as `label (url)`,
-tables flattened to readable rows, and fenced code as bare code.
-
 The counter counts characters by code point rather than `String.length`, so an emoji is one
 symbol, not two — matching how a paste target counts.
 
-**The interesting constraint is that emphasis cannot survive plain text.** The usual trick
-is Unicode's mathematical alphanumerics, which exist for Latin and Greek and nothing else.
-For a user writing Bulgarian that would silently do nothing to most of a document, so:
+`src/markdown/canonical.ts` re-serialises a note from markdown-it's token stream rather than
+scraping the rendered DOM, so it stays a pure function and can be unit-tested. Copy offers
+two forms and no more: the source byte for byte, or that canonical rendering.
 
-- styling is a separate menu entry, never the default;
-- unsupported scripts pass through unchanged rather than becoming mojibake;
-- the result reports `partiallyStyled`, and the confirmation says the script has no bold
-  form, instead of leaving someone to wonder;
-- headings fall back to **capitals** where bold is unavailable, since capitals work in
-  Cyrillic and Greek and give back the hierarchy the bold would have carried.
+**The output is Markdown in both cases, and that is the whole design decision.** The first
+version of this shipped a third option that substituted Unicode mathematical alphanumerics
+for emphasis, so text would still *look* bold in a plain box. That was wrong once the actual
+audience was clear: this text is read as often by an LLM agent as by a person. Unicode
+look-alikes shred tokenisation, defeat search and copy, read as gibberish to a screen
+reader, and do not exist at all for Cyrillic or CJK — buying an appearance at the cost of
+everything else. Markdown is what models are trained on hardest and costs a person nothing
+to read, so both options emit it and the styled one was removed rather than demoted.
 
-Three copy modes, each labelled with the symbol count it produces: markdown source, plain
-text, and plain text with Unicode emphasis.
+What "canonical" buys over the raw source: one bullet character, one emphasis marker, tables
+with a delimiter row that preserves alignment, pipes escaped inside cells, indented code
+promoted to fences, fences widened past any backticks inside them, bare URLs left bare
+rather than becoming `[url](url)`, frontmatter split off before parsing (markdown-it reads
+its fence as two thematic breaks), and one blank line between blocks. It is idempotent.
 
 ### Phone layout
 
@@ -325,8 +325,9 @@ save into anyway.
 - **Copy writes plain text only, never `text/html`.** Adding an HTML flavour would make
   rich targets paste with real formatting, but it would also override the plain text in
   boxes that accept both — the opposite of what the feature is for.
-- **Unicode-styled text is bad for search and screen readers.** It is opt-in per copy for
-  that reason, and the menu says what it is.
+- **Canonical output does not escape stray markdown characters in prose.** A literal `*`
+  that markdown-it handed back as text is re-emitted as-is. It was not markup going in and
+  is not markup coming out, but a contrived document could round-trip differently.
 
 ## 11. Risks and how they're handled
 

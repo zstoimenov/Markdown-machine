@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { countSymbols, toPlainText } from '../markdown/plaintext';
+import { useEffect, useRef, useState } from 'react';
+import { toCanonicalMarkdown } from '../markdown/canonical';
+import { countSymbols } from '../markdown/counts';
 import { useVault } from '../state/vaultStore';
 
 /**
@@ -30,32 +31,23 @@ async function writeClipboard(text: string): Promise<boolean> {
   }
 }
 
-type CopyMode = 'markdown' | 'plain' | 'styled';
+type CopyMode = 'source' | 'text';
 
-interface Variant {
-  mode: CopyMode;
-  label: string;
-  note: string;
-}
-
-const VARIANTS: Variant[] = [
-  { mode: 'markdown', label: 'Markdown source', note: 'The note exactly as written' },
-  { mode: 'plain', label: 'Plain text', note: 'Structure only — works in any language' },
-  {
-    mode: 'styled',
-    label: 'With bold and italic',
-    note: 'Unicode styling — Latin and Greek only',
-  },
+const VARIANTS: Array<{ mode: CopyMode; label: string }> = [
+  { mode: 'source', label: 'Markdown source' },
+  { mode: 'text', label: 'Text for pasting' },
 ];
 
 /**
- * Copies the note in whichever form the destination can take.
+ * Copies the open note, either exactly as written or re-serialised into
+ * canonical Markdown.
  *
- * Three modes rather than one, because they fail differently: markdown is exact
- * but only useful where markdown is understood, plain-text structure survives
- * anywhere, and Unicode emphasis exists for Latin and Greek only. Each is
- * offered with the symbol count it produces, since the destination usually has
- * a limit.
+ * Both come out as Markdown on purpose. The text is read as often by an LLM
+ * agent as by a person, and those two want the same thing: Markdown is the
+ * format models are trained on hardest, and `**bold**` costs a person nothing
+ * to read. Substituting Unicode look-alikes to fake real bold would break
+ * tokenisation, search and screen readers to buy an appearance — so that option
+ * is gone rather than merely discouraged.
  */
 export function CopyButton() {
   const draft = useVault((s) => s.draft);
@@ -68,16 +60,6 @@ export function CopyButton() {
   const closeTimer = useRef(0);
 
   const value = draft ?? source;
-
-  // The counts are cheap and only recomputed while the menu is actually open.
-  const counts = useMemo(() => {
-    if (value === null || !open) return null;
-    return {
-      markdown: countSymbols(value.trimEnd()),
-      plain: toPlainText(value, { styled: false }).symbols,
-      styled: toPlainText(value, { styled: true }).symbols,
-    };
-  }, [value, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -109,17 +91,15 @@ export function CopyButton() {
     if (value === null) return;
 
     const result =
-      mode === 'markdown'
-        ? { text: value, symbols: countSymbols(value.trimEnd()), partiallyStyled: false }
-        : toPlainText(value, { styled: mode === 'styled' });
+      mode === 'source'
+        ? { text: value, symbols: countSymbols(value.trimEnd()) }
+        : toCanonicalMarkdown(value);
 
     const copied = await writeClipboard(result.text);
 
     setMessage(
       copied
-        ? `Copied ${result.symbols.toLocaleString()} symbols${
-            result.partiallyStyled ? ' — this script has no bold in plain text' : ''
-          }`
+        ? `Copied ${result.symbols.toLocaleString()} symbols`
         : 'Could not reach the clipboard',
     );
 
@@ -157,16 +137,9 @@ export function CopyButton() {
           {message ? (
             <p className="copy-message">{message}</p>
           ) : (
-            VARIANTS.map(({ mode, label, note }) => (
-              <button
-                key={mode}
-                type="button"
-                role="menuitem"
-                onClick={() => void copy(mode)}
-              >
-                <span className="copy-label">{label}</span>
-                <span className="copy-note">{note}</span>
-                <span className="copy-count">{counts?.[mode].toLocaleString()} symbols</span>
+            VARIANTS.map(({ mode, label }) => (
+              <button key={mode} type="button" role="menuitem" onClick={() => void copy(mode)}>
+                {label}
               </button>
             ))
           )}

@@ -50,24 +50,21 @@ and a local `npm run dev` keep separate ones.
 The status bar shows words and **symbols** — characters including spaces, counted the way a
 person and a post limit count them, so an emoji is one symbol rather than two.
 
-**Copy** in the toolbar offers three forms of the open note, each labelled with the symbol
-count it produces, since the destination usually has a limit:
+**Copy** in the toolbar gives the open note in one of two forms:
 
-| | |
-|---|---|
-| **Markdown source** | The note exactly as written — for anywhere that understands markdown |
-| **Plain text** | Structure without markup: `•` bullets, numbered lists, `>` quotes, link targets written out as `label (url)`, tables flattened to readable rows. Works in any language |
-| **With bold and italic** | The same, plus Unicode emphasis so text still *looks* formatted in a plain box |
+- **Markdown source** — the note exactly as written, byte for byte. For pasting a repaired
+  note back into wherever the document lives.
+- **Text for pasting** — the note re-serialised as canonical Markdown: one bullet character,
+  one emphasis marker, tables with a proper delimiter row, indented code promoted to fences,
+  consistent blank lines. Whatever shape the note was in, this parses the same way for the
+  next reader.
 
-The third one comes with a caveat worth knowing before you rely on it. Plain text has no
-bold, so the only way to fake it is Unicode's mathematical alphabets — and **those exist for
-Latin and Greek only**. Cyrillic, accented Latin and CJK have no bold or italic forms
-anywhere in Unicode, so they come through unchanged, and the confirmation says so rather
-than leaving you to wonder why half the post came out plain. Headings are the exception:
-where bold is unavailable they fall back to capitals, which every script has.
-
-Unicode-styled text is also invisible to search and read as gibberish by screen readers, so
-it is the option you choose, never the default.
+Both come out as Markdown, deliberately. This text is read as often by an LLM agent as by a
+person, and both want the same thing: Markdown is the format models are trained on most
+heavily, and `**bold**` costs a person nothing to read. Faking real bold with Unicode
+look-alikes — 𝗯𝗼𝗹𝗱 instead of **bold** — buys an appearance at the cost of tokenisation,
+search, copy-paste and screen readers, and does not exist at all for Cyrillic or CJK. So
+that option is not offered.
 
 ## Repairing damaged markdown
 
