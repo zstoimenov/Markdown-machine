@@ -360,45 +360,47 @@ await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 await page.getByRole('button', { name: 'Copy', exact: true }).click();
 await page.waitForSelector('.copy-menu');
-check('the copy menu offers all three modes', (await page.locator('.copy-menu button').count()) === 3);
-check('and shows what each would cost in symbols', (await page.locator('.copy-count').first().innerText()).includes('symbols'));
+check('the copy menu offers exactly two options', (await page.locator('.copy-menu button').count()) === 2);
+check('and nothing but their names', (await page.locator('.copy-menu').innerText()).trim() === 'Markdown source\nText for pasting');
 await page.screenshot({ path: `${SP}/smoke-copy.png` });
 
-await page.getByRole('menuitem', { name: /Plain text/ }).click();
+await page.getByRole('menuitem', { name: 'Text for pasting' }).click();
 await page.waitForSelector('.copy-message');
-const plainClip = await page.evaluate(() => navigator.clipboard.readText());
-// The heading picked up "12345" from the counter check above.
-check('plain copy keeps the heading text without its hashes', plainClip.startsWith('Format12345'), plainClip.slice(0, 30));
-check('plain copy keeps no markdown markers', !plainClip.includes('##') && !plainClip.includes('**'));
+const pasteClip = await page.evaluate(() => navigator.clipboard.readText());
+check('pasteable text stays markdown', pasteClip.startsWith('# Format12345'), pasteClip.slice(0, 30));
+check('and uses no Unicode look-alikes', !/[\u{1D400}-\u{1D7FF}]/u.test(pasteClip));
 check('the confirmation reports the symbol count', (await page.locator('.copy-message').innerText()).includes('Copied'));
 
-await page.waitForFunction(() => document.querySelector('.copy-menu') === null);
-await page.getByRole('button', { name: 'Copy', exact: true }).click();
-await page.getByRole('menuitem', { name: /bold and italic/ }).click();
-await page.waitForSelector('.copy-message');
-const styledClip = await page.evaluate(() => navigator.clipboard.readText());
-check('styled copy bolds the Latin heading', /[\u{1D5D4}-\u{1D607}]/u.test(styledClip), styledClip.slice(0, 30));
-
-// Structure that has to survive a paste into a plain box.
-await page.evaluate(() => window.mmFixture.touch('Format.md', '# T\n\n- one\n- two\n\n[docs](https://example.com)\n'));
+// Canonical form: messy but valid markdown comes out normalised.
+await page.evaluate(() =>
+  window.mmFixture.touch(
+    'Format.md',
+    // The paragraph matters: an indented block straight after a list is a list
+    // continuation in markdown, not a code block.
+    '# T\n* one\n+ two\n\nBody.\n\n    const a = 1;\n\n| A | B |\n| :-- | --: |\n| 1 | 2 |\n\n[docs](https://example.com)\n',
+  ),
+);
 await page.getByRole('button', { name: 'Welcome.md' }).click();
 await page.waitForTimeout(150);
 await page.getByRole('button', { name: 'Format.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'T');
-await page.getByRole('button', { name: 'Copy', exact: true }).click();
-await page.getByRole('menuitem', { name: /Plain text/ }).click();
-await page.waitForSelector('.copy-message');
-const structured = await page.evaluate(() => navigator.clipboard.readText());
-check('bullets become real bullet characters', structured.includes('• one'));
-check('link targets are written out', structured.includes('docs (https://example.com)'));
 
-// Markdown source copies the file verbatim, markers and all.
 await page.getByRole('button', { name: 'Copy', exact: true }).click();
-await page.getByRole('menuitem', { name: /Markdown source/ }).click();
+await page.getByRole('menuitem', { name: 'Text for pasting' }).click();
+await page.waitForSelector('.copy-message');
+const canonical = await page.evaluate(() => navigator.clipboard.readText());
+check('bullets are normalised to dashes', canonical.includes('- one') && canonical.includes('- two'));
+check('indented code is promoted to a fence', canonical.includes('```\nconst a = 1;\n```'));
+check('the table keeps its alignment row', canonical.includes('| :--- | ---: |'));
+check('links keep their target in markdown form', canonical.includes('[docs](https://example.com)'));
+
+// Markdown source is the buffer verbatim, however messy.
+await page.getByRole('button', { name: 'Copy', exact: true }).click();
+await page.getByRole('menuitem', { name: 'Markdown source' }).click();
 await page.waitForSelector('.copy-message');
 const rawClip = await page.evaluate(() => navigator.clipboard.readText());
-check('markdown copy keeps the hashes and brackets', rawClip.includes('# T') && rawClip.includes('[docs](https://example.com)'));
-check('markdown copy matches the editor exactly', rawClip === (await page.evaluate(() => window.mmFixture.read('Format.md'))), rawClip.slice(0, 40));
+check('markdown source is copied byte for byte', rawClip === (await page.evaluate(() => window.mmFixture.read('Format.md'))), rawClip.slice(0, 30));
+check('so it still carries the original bullet characters', rawClip.includes('* one') && rawClip.includes('+ two'));
 
 // ---------- Phone layout (OnePlus 12) ----------
 const phone = await browser.newPage({

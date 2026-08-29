@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { countSymbols, countWords } from '../markdown/plaintext';
+import { countSymbols, countWords } from '../markdown/counts';
 import { canRevert, isDirty, useVault } from '../state/vaultStore';
 
 function ago(from: number, now: number): string {

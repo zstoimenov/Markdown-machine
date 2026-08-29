@@ -988,8 +988,8 @@ kbd {
   top: calc(100% + 6px);
   right: 0;
   z-index: 30;
-  width: max(260px, 100%);
-  max-width: min(320px, calc(100vw - 24px));
+  width: max(190px, 100%);
+  max-width: min(260px, calc(100vw - 24px));
   padding: 4px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -998,10 +998,10 @@ kbd {
 }
 
 .copy-menu button {
-  display: grid;
-  gap: 1px;
+  display: block;
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 10px;
+  font-size: 13px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -1013,21 +1013,6 @@ kbd {
 
 .copy-menu button:hover {
   background: var(--accent-soft);
-}
-
-.copy-label {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.copy-note {
-  font-size: 11px;
-  color: var(--text-faint);
-}
-
-.copy-count {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .copy-message {
