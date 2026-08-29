@@ -45,6 +45,30 @@ directly in your browser through the File System Access API — nothing is uploa
 is no server to upload to. The folder you pick is remembered per origin, so the hosted app
 and a local `npm run dev` keep separate ones.
 
+## Counting and copying
+
+The status bar shows words and **symbols** — characters including spaces, counted the way a
+person and a post limit count them, so an emoji is one symbol rather than two.
+
+**Copy** in the toolbar offers three forms of the open note, each labelled with the symbol
+count it produces, since the destination usually has a limit:
+
+| | |
+|---|---|
+| **Markdown source** | The note exactly as written — for anywhere that understands markdown |
+| **Plain text** | Structure without markup: `•` bullets, numbered lists, `>` quotes, link targets written out as `label (url)`, tables flattened to readable rows. Works in any language |
+| **With bold and italic** | The same, plus Unicode emphasis so text still *looks* formatted in a plain box |
+
+The third one comes with a caveat worth knowing before you rely on it. Plain text has no
+bold, so the only way to fake it is Unicode's mathematical alphabets — and **those exist for
+Latin and Greek only**. Cyrillic, accented Latin and CJK have no bold or italic forms
+anywhere in Unicode, so they come through unchanged, and the confirmation says so rather
+than leaving you to wonder why half the post came out plain. Headings are the exception:
+where bold is unavailable they fall back to capitals, which every script has.
+
+Unicode-styled text is also invisible to search and read as gibberish by screen readers, so
+it is the option you choose, never the default.
+
 ## Repairing damaged markdown
 
 LLM tools sometimes write their transport envelope into the file instead of the content it

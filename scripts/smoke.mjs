@@ -19,7 +19,8 @@ const BASE = process.env.BASE ?? 'http://localhost:5173';
 const browser = await chromium.launch(
   process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {},
 );
-const page = await browser.newPage({ viewport: { width: 1400, height: 860 } });
+const context = await browser.newContext({ viewport: { width: 1400, height: 860 } });
+const page = await context.newPage();
 
 const problems = [];
 page.on('console', (m) => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
@@ -40,6 +41,9 @@ check('M1: preview still renders', (await page.locator('.prose table tbody tr').
 check('M1: images still resolve', (await page.locator('.prose img').first().getAttribute('src') || '').startsWith('blob:'));
 
 // ---------- Editor ----------
+// The editor is a lazy chunk, so it arrives a beat after the preview does —
+// asserting immediately races the Suspense fallback rather than the app.
+await page.waitForSelector('.cm-editor');
 check('editor mounts alongside the preview', await page.locator('.cm-editor').isVisible());
 check('markdown syntax is highlighted', (await page.locator('.cm-content .tok-heading, .cm-content [class*=ͼ]').count()) > 0);
 
@@ -331,6 +335,71 @@ await page.getByRole('button', { name: 'Long.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
 check('a healthy file is left alone', (await page.locator('.notice-repair').count()) === 0);
 
+// ---------- Symbols counter and copy ----------
+await page.getByRole('button', { name: 'Format.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Format');
+
+const statusText = async () => (await page.locator('.status').innerText()).replace(/\s+/g, ' ');
+check('the status bar counts symbols', /\d+ symbols/.test(await statusText()));
+
+const symbolsNow = async () =>
+  Number((await statusText()).match(/([\d,]+) symbols/)[1].replace(/,/g, ''));
+const before = await symbolsNow();
+await page.locator('.cm-line').first().click();
+await page.keyboard.press('End');
+await page.keyboard.type('12345');
+await page.waitForFunction((n) => {
+  const m = document.querySelector('.status')?.textContent?.match(/([\d,]+) symbols/);
+  return m && Number(m[1].replace(/,/g, '')) === n + 5;
+}, before);
+check('the symbol count tracks typing', true);
+await waitForSaved();
+
+// Clipboard reads need permission; grant it so the copy can be verified.
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+await page.getByRole('button', { name: 'Copy', exact: true }).click();
+await page.waitForSelector('.copy-menu');
+check('the copy menu offers all three modes', (await page.locator('.copy-menu button').count()) === 3);
+check('and shows what each would cost in symbols', (await page.locator('.copy-count').first().innerText()).includes('symbols'));
+await page.screenshot({ path: `${SP}/smoke-copy.png` });
+
+await page.getByRole('menuitem', { name: /Plain text/ }).click();
+await page.waitForSelector('.copy-message');
+const plainClip = await page.evaluate(() => navigator.clipboard.readText());
+// The heading picked up "12345" from the counter check above.
+check('plain copy keeps the heading text without its hashes', plainClip.startsWith('Format12345'), plainClip.slice(0, 30));
+check('plain copy keeps no markdown markers', !plainClip.includes('##') && !plainClip.includes('**'));
+check('the confirmation reports the symbol count', (await page.locator('.copy-message').innerText()).includes('Copied'));
+
+await page.waitForFunction(() => document.querySelector('.copy-menu') === null);
+await page.getByRole('button', { name: 'Copy', exact: true }).click();
+await page.getByRole('menuitem', { name: /bold and italic/ }).click();
+await page.waitForSelector('.copy-message');
+const styledClip = await page.evaluate(() => navigator.clipboard.readText());
+check('styled copy bolds the Latin heading', /[\u{1D5D4}-\u{1D607}]/u.test(styledClip), styledClip.slice(0, 30));
+
+// Structure that has to survive a paste into a plain box.
+await page.evaluate(() => window.mmFixture.touch('Format.md', '# T\n\n- one\n- two\n\n[docs](https://example.com)\n'));
+await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.waitForTimeout(150);
+await page.getByRole('button', { name: 'Format.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'T');
+await page.getByRole('button', { name: 'Copy', exact: true }).click();
+await page.getByRole('menuitem', { name: /Plain text/ }).click();
+await page.waitForSelector('.copy-message');
+const structured = await page.evaluate(() => navigator.clipboard.readText());
+check('bullets become real bullet characters', structured.includes('• one'));
+check('link targets are written out', structured.includes('docs (https://example.com)'));
+
+// Markdown source copies the file verbatim, markers and all.
+await page.getByRole('button', { name: 'Copy', exact: true }).click();
+await page.getByRole('menuitem', { name: /Markdown source/ }).click();
+await page.waitForSelector('.copy-message');
+const rawClip = await page.evaluate(() => navigator.clipboard.readText());
+check('markdown copy keeps the hashes and brackets', rawClip.includes('# T') && rawClip.includes('[docs](https://example.com)'));
+check('markdown copy matches the editor exactly', rawClip === (await page.evaluate(() => window.mmFixture.read('Format.md'))), rawClip.slice(0, 40));
+
 // ---------- Phone layout (OnePlus 12) ----------
 const phone = await browser.newPage({
   viewport: { width: 412, height: 915 },
@@ -379,6 +448,14 @@ await phone.waitForSelector('.cm-scroller');
 const editorFont = await phone.evaluate(() => getComputedStyle(document.querySelector('.cm-scroller')).fontSize);
 check('the editor does not trigger zoom-on-focus', parseFloat(editorFont) >= 16, editorFont);
 check('no horizontal overflow while editing', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+
+await phone.getByRole('button', { name: 'Copy', exact: true }).tap();
+await phone.waitForSelector('.copy-menu');
+check('the copy menu is reachable on a phone', await phone.locator('.copy-menu').isVisible());
+check('and does not push the page sideways', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+const menuBox = await phone.locator('.copy-menu').boundingBox();
+check('the copy menu stays on screen', menuBox.x >= 0 && menuBox.x + menuBox.width <= 412, JSON.stringify(menuBox));
+await phone.screenshot({ path: `${SP}/smoke-phone-copy.png` });
 await phone.screenshot({ path: `${SP}/smoke-phone.png` });
 await phone.close();
 

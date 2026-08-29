@@ -1,4 +1,5 @@
 import { useIsNarrow } from '../hooks/useMediaQuery';
+import { CopyButton } from './CopyButton';
 import { useVault, type ViewMode } from '../state/vaultStore';
 
 const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
@@ -56,6 +57,7 @@ export function Toolbar() {
       )}
 
       <div className="toolbar-actions">
+        <CopyButton />
         {mode === 'single-file' && activePath !== null && (
           <button type="button" className="button button-primary" onClick={downloadActive}>
             Download

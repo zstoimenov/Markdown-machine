@@ -265,6 +265,30 @@ so no test framework was added. It gates the Pages deploy.
 Its one real limit is recorded in the code and the README: once the newline between a
 heading and its body is gone, the boundary is unrecoverable, so the heading keeps the run.
 
+### Symbols counter and copying out
+
+`src/markdown/plaintext.ts` walks markdown-it's token stream rather than scraping the
+rendered DOM, so it stays a pure function and can be unit-tested. It emits `•` bullets,
+numbered lists, `>` quotes, `☐`/`☑` task items, link targets written out as `label (url)`,
+tables flattened to readable rows, and fenced code as bare code.
+
+The counter counts characters by code point rather than `String.length`, so an emoji is one
+symbol, not two — matching how a paste target counts.
+
+**The interesting constraint is that emphasis cannot survive plain text.** The usual trick
+is Unicode's mathematical alphanumerics, which exist for Latin and Greek and nothing else.
+For a user writing Bulgarian that would silently do nothing to most of a document, so:
+
+- styling is a separate menu entry, never the default;
+- unsupported scripts pass through unchanged rather than becoming mojibake;
+- the result reports `partiallyStyled`, and the confirmation says the script has no bold
+  form, instead of leaving someone to wonder;
+- headings fall back to **capitals** where bold is unavailable, since capitals work in
+  Cyrillic and Greek and give back the hierarchy the bold would have carried.
+
+Three copy modes, each labelled with the symbol count it produces: markdown source, plain
+text, and plain text with Unicode emphasis.
+
 ### Phone layout
 
 The file tree becomes a drawer, the split view collapses to a single pane, touch targets
@@ -298,6 +322,11 @@ save into anyway.
   See section 9.
 - **Only one file at a time on mobile.** A multi-select file picker would give phones a
   small library rather than a single note; not built, because it was not asked for.
+- **Copy writes plain text only, never `text/html`.** Adding an HTML flavour would make
+  rich targets paste with real formatting, but it would also override the plain text in
+  boxes that accept both — the opposite of what the feature is for.
+- **Unicode-styled text is bad for search and screen readers.** It is opt-in per copy for
+  that reason, and the menu says what it is.
 
 ## 11. Risks and how they're handled
 

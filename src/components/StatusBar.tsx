@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
+import { countSymbols, countWords } from '../markdown/plaintext';
 import { canRevert, isDirty, useVault } from '../state/vaultStore';
-
-function countWords(source: string): number {
-  const matches = source.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu);
-  return matches ? matches.length : 0;
-}
 
 function ago(from: number, now: number): string {
   const seconds = Math.max(0, Math.round((now - from) / 1000));
@@ -60,14 +56,20 @@ export function StatusBar() {
 
   const value = draft ?? source;
   const words = value ? countWords(value) : 0;
+  const symbols = value ? countSymbols(value) : 0;
 
   return (
     <footer className="status">
       <span className="status-path">{activePath}</span>
       {value !== null && (
-        <span>
-          {words.toLocaleString()} {words === 1 ? 'word' : 'words'}
-        </span>
+        <>
+          <span>
+            {words.toLocaleString()} {words === 1 ? 'word' : 'words'}
+          </span>
+          <span title="Characters in the source, counting spaces">
+            {symbols.toLocaleString()} {symbols === 1 ? 'symbol' : 'symbols'}
+          </span>
+        </>
       )}
       {error && <span className="is-warn">{error}</span>}
       {revertable && (
