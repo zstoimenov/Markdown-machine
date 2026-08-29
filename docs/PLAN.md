@@ -236,5 +236,8 @@ the app runs read-only, says so, and offers a button to ask again.
    metadata strip? *Assumed: yes, hidden from preview.*
 2. **Non-markdown files** — show them greyed out in the tree, or hide them entirely?
    *Assumed: hide.*
-3. **Deploy** — is this ever hosted (GitHub Pages), or purely `npm run dev` on your machine?
-   *Assumed: static build deployable to Pages, but local-first.*
+3. ~~**Deploy** — is this ever hosted (GitHub Pages), or purely `npm run dev` on your
+   machine?~~ **Answered: both.** Deployed to GitHub Pages from `main`, and still local-first
+   — the hosted page uploads nothing, because there is nothing to upload to. The build uses a
+   relative base (`./`) rather than hard-coding `/Markdown-machine/`, so the same artifact
+   works at a project path, at a root domain, or from any static host.

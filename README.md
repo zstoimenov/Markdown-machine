@@ -18,6 +18,18 @@ things stand, and Revert takes a file back to how it was when you opened it.
 Still to come (M4): themes and reader-mode polish, formatting shortcuts, and trimming the
 bundle. See [docs/PLAN.md](docs/PLAN.md).
 
+## Live
+
+<https://zstoimenov.github.io/Markdown-machine/>
+
+Deployed from `main` by [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every
+push, and manually from any branch via the Actions tab.
+
+Hosting the app publicly does not make your notes public. The page reads and writes files
+directly in your browser through the File System Access API — nothing is uploaded, and there
+is no server to upload to. The folder you pick is remembered per origin, so the hosted app
+and a local `npm run dev` keep separate ones.
+
 ## Requirements
 
 A Chromium-based desktop browser — Chrome, Edge, Brave, Arc or Opera. Folder access uses
