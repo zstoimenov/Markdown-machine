@@ -5,6 +5,8 @@ import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { Workspace } from './components/Workspace';
 import { ConflictBar } from './components/ConflictBar';
+import { EmptyState } from './components/EmptyState';
+import { FilePicker } from './components/FilePicker';
 import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave';
 
 function Splash({
@@ -34,6 +36,7 @@ export function App() {
   const source = useVault((s) => s.source);
   const loadingFile = useVault((s) => s.loadingFile);
   const dirty = useVault(isDirty);
+  const mode = useVault((s) => s.mode);
   const canWrite = useVault((s) => s.canWrite);
   const enableWriting = useVault((s) => s.enableWriting);
   const init = useVault((s) => s.init);
@@ -51,13 +54,16 @@ export function App() {
 
   if (status === 'unsupported') {
     return (
-      <Splash title="This browser can’t open folders">
+      <Splash title="This browser can’t open folders" action={<FilePicker />}>
         <p>
           Markdown Machine reads and writes the actual files in a folder on your disk, which
           needs the File System Access API. Today that means Chrome, Edge, Brave, Arc or
           Opera on the desktop — Firefox and Safari have not shipped it.
         </p>
-        <p className="muted">Open this page in a Chromium browser to get started.</p>
+        <p className="muted">
+          You can still open one file at a time here. It opens read-only, because this browser
+          gives no way to write back to the original — edit it and download a copy.
+        </p>
       </Splash>
     );
   }
@@ -106,12 +112,20 @@ export function App() {
   return (
     <div className="app">
       <Toolbar />
-      {!canWrite && (
+      {!canWrite && mode === 'vault' && (
         <div className="notice">
           <span>This folder is open for reading only, so nothing you type will be saved.</span>
           <button type="button" className="button" onClick={() => void enableWriting()}>
             Allow editing
           </button>
+        </div>
+      )}
+      {mode === 'single-file' && (
+        <div className="notice">
+          <span>
+            One file, opened read-only — this browser cannot write back to the original.
+            Your edits live here until you download a copy.
+          </span>
         </div>
       )}
       <ConflictBar />
@@ -120,9 +134,7 @@ export function App() {
           <FileTree />
         </aside>
         <main className="reader">
-          {activePath === null && (
-            <p className="reader-empty">Pick a note from the sidebar to open it.</p>
-          )}
+          {activePath === null && <EmptyState message="Pick a note from the sidebar to open it." />}
           {activePath !== null && loadingFile && <p className="reader-empty">Opening…</p>}
           {activePath !== null && !loadingFile && source !== null && (
             <Workspace key={activePath} path={activePath} source={source} />

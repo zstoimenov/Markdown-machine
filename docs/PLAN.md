@@ -140,11 +140,11 @@ multiple tabs · Mermaid and math · external-change watching · git integration
 | M1 | Read the vault | ✅ Open folder, persisted handle, file tree, click-to-read rendered preview |
 | M2 | Edit | ✅ CodeMirror pane, split layout, scroll sync, live preview on keystroke |
 | M3 | Write back | ✅ Autosave + `Cmd+S`, dirty state, new/rename/delete, unsaved-changes guard |
-| M4 | Feel good | Themes, reader mode, formatting shortcuts, word count, empty/error states, fallback banner |
+| M4 | Feel good | ✅ Themes, reader mode, formatting shortcuts, word count, empty/error states, fallback banner |
 
 Each milestone is a working app, not a layer — M1 alone is already a usable markdown reader.
 
-**M0 through M3 are done.** What shipped beyond the milestone line, because it fell out of the
+**M0 through M4 are done — the plan is delivered.** What shipped beyond the milestone line, because it fell out of the
 reading path naturally: relative-path images resolved through the adapter and shown as blob
 URLs (with a visible notice when one is missing), links between notes navigating inside the
 vault, a frontmatter metadata strip, light/dark themes driven off the OS, and a word count.
@@ -162,6 +162,10 @@ paths are covered end-to-end: tree, lazy directory expansion, GFM tables, task l
 highlighted code, image resolution, internal-link navigation, both themes, live preview,
 undo history, view modes, the divider, scroll sync in both directions, and the
 unsaved-changes guard.
+
+M4 finished it: formatting shortcuts, a reader mode with its own measure, a shortcut sheet
+on the empty state, the single-file fallback promised in section 2, and the bundle work
+recorded as a known issue in M2. Details in section 8.
 
 M3 turned it into a real editor: autosave 800ms after typing stops, `Ctrl/Cmd+S` for an
 immediate write, and new / rename / delete from the sidebar. Write permission is requested
@@ -201,21 +205,53 @@ choose a folder, and autosave firing on a timer has no user gesture to attach a 
 at all. It now asks once, when the folder is picked. Refusal is handled rather than fatal —
 the app runs read-only, says so, and offers a button to ask again.
 
-## 8. Known issues
+## 8. Polish (M4)
 
-- **Bundle size.** CodeMirror took the production bundle from 464 kB to 977 kB
-  (167 kB → 345 kB gzipped). Fine over localhost, heavy for a hosted build. M4 should
-  lazy-load `highlight.js` languages and split the editor out of the initial chunk.
-- **No syntax highlighting inside editor code fences.** `@codemirror/language-data` would
-  add it, at the cost of a lazy chunk per language. Deferred until the bundle work above.
+**Formatting shortcuts.** Bold, italic, inline code, link, heading cycle, bullet list.
+Two of the key choices were forced rather than picked: `Mod-1`…`Mod-6` for heading levels,
+which is what most desktop editors use, cannot work here because browsers switch tabs on
+those chords and a page cannot intercept them — hence a cycle on `Mod-⇧-H`. And the bullet
+toggle moved off `Mod-⇧-8` because a shifted digit is reported inconsistently across
+keyboard layouts; `Mod-⇧-L` is unambiguous.
+
+**Bundle.** 977 kB → 406 kB on first load (345 kB → 145 kB gzipped), which is lighter than
+M1 was before CodeMirror existed. Two changes: highlight.js dropped from its `common` bundle
+to a curated seventeen languages plus aliases, and the editor is now a lazy chunk, since
+nothing needs CodeMirror until a note is actually opened. Splitting it revealed its own
+trap — importing the shortcut list from `commands.ts` pulled `@codemirror/state` straight
+back into the initial chunk, so the list lives in its own module.
+
+**Reader mode.** The preview takes a wider measure and larger type when the editor is
+hidden. Fixing this surfaced a bug in the measure that had been there since M1: a
+`max-width` in `ch` on `.preview` resolved against the 14px UI font that element inherits,
+not the larger serif the prose inside it actually uses, so every column was noticeably
+narrower than intended. It is expressed in `rem` now.
+
+**Single-file fallback.** Section 2 promised Firefox and Safari a degradation path, and M4
+delivers it: a drop zone and file picker on the unsupported splash open one `.md` file,
+which renders and can be edited, with a Download button in place of a save. It is
+permanently unwritable — not "no permission yet" but no handle to write through at all —
+so autosave never runs and the banner says why.
+
+**Discoverability.** The shortcut sheet shows on the empty state, with the modifier spelled
+the way the current keyboard has it printed.
+
+## 9. Known issues
+
+- **No syntax highlighting inside editor code fences.** Still deferred, and now
+  deliberately: `@codemirror/language-data` means a lazy chunk per language and six more
+  dependencies, which fights the bundle work above, to highlight code that the preview is
+  already highlighting one pane over.
 - **Changes on disk are noticed on write, not as they happen.** Nothing watches the folder,
   so an externally-edited note that is open here still shows the old text until you save or
   reopen it. The conflict check means it cannot be silently overwritten, which is the part
   that matters; live watching stays on the iterate list.
 - **Directories cannot be created, renamed or deleted.** Only files. Folder operations were
-  not in the milestone and adding them would widen the destructive surface.
+  not in any milestone and adding them would widen the destructive surface.
+- **The single-file fallback cannot show images.** Relative image paths need the folder the
+  file sits in, which is exactly what that browser will not hand over.
 
-## 9. Risks and how they're handled
+## 10. Risks and how they're handled
 
 - **Permission re-grant on reload.** Browsers drop write permission between sessions.
   Handled with a single "Reopen `<folder>`" button on launch rather than a silent failure.
@@ -230,7 +266,7 @@ the app runs read-only, says so, and offers a button to ask again.
 - **Scroll-sync jank.** Line-to-block mapping via `markdown-it` source maps rather than
   naive percentage scrolling, which drifts badly on long documents.
 
-## 10. Open questions (not blocking — I'll assume the first answer)
+## 11. Open questions (not blocking — I'll assume the first answer)
 
 1. **Frontmatter** — YAML frontmatter hidden from the preview and shown as a small
    metadata strip? *Assumed: yes, hidden from preview.*

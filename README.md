@@ -6,17 +6,32 @@ already are.
 
 ## Status
 
-M0–M3 are done. Open a folder, browse it, and edit notes in a split view with a
-scroll-synced live preview. Changes are written back to the real files: autosave shortly
-after you stop typing, or `Ctrl`/`Cmd`+`S` to save now. New, rename and delete live in the
-sidebar.
+M0–M4 are done — the whole plan has shipped. Open a folder, browse it, and edit notes in a
+split view with a scroll-synced live preview. Changes are written back to the real files:
+autosave shortly after you stop typing, or `Ctrl`/`Cmd`+`S` to save now. New, rename and
+delete live in the sidebar.
 
 If a note changes on disk while you have it open, the save is refused rather than
 overwriting it, and you are asked which side to keep. The status bar always says where
 things stand, and Revert takes a file back to how it was when you opened it.
 
-Still to come (M4): themes and reader-mode polish, formatting shortcuts, and trimming the
-bundle. See [docs/PLAN.md](docs/PLAN.md).
+See [docs/PLAN.md](docs/PLAN.md) for the design, the milestones, and what was deliberately
+left out.
+
+## Shortcuts
+
+| | |
+|---|---|
+| Bold | `Mod`+`B` |
+| Italic | `Mod`+`I` |
+| Inline code | `Mod`+`E` |
+| Link | `Mod`+`K` |
+| Cycle heading level | `Mod`+`⇧`+`H` |
+| Bullet list | `Mod`+`⇧`+`L` |
+| Save now | `Mod`+`S` |
+
+`Mod` is `⌘` on a Mac and `Ctrl` elsewhere. The same list shows in the app whenever no note
+is open.
 
 ## Live
 
@@ -33,8 +48,11 @@ and a local `npm run dev` keep separate ones.
 ## Requirements
 
 A Chromium-based desktop browser — Chrome, Edge, Brave, Arc or Opera. Folder access uses
-the File System Access API, which Firefox and Safari have not shipped. The app says so
-plainly rather than failing oddly if you open it elsewhere.
+the File System Access API, which Firefox and Safari have not shipped.
+
+Those browsers get a fallback rather than a dead end: drop in a single `.md` file, read and
+edit it, and download a copy. It cannot save in place, because the browser gives no handle
+to write back through — which is the whole reason the folder version is the real one.
 
 ## Running it
 

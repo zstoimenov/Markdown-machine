@@ -107,8 +107,16 @@ const DOT_PNG =
 
 const DIRECTORIES = new Set(['notes']);
 
+const FORMAT = `# Format
+
+## A table
+
+Body text for the formatting commands to chew on.
+`;
+
 const files = new Map<string, { text: string; modifiedAt: number }>([
   ['Welcome.md', { text: WELCOME, modifiedAt: Date.now() }],
+  ['Format.md', { text: FORMAT, modifiedAt: Date.now() }],
   ['Long.md', { text: LONG_NOTE, modifiedAt: Date.now() }],
   ['notes/Second.md', { text: SECOND, modifiedAt: Date.now() }],
 ]);

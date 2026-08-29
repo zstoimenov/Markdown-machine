@@ -143,6 +143,10 @@ body {
   display: flex;
 }
 
+.reader > .empty-state {
+  align-self: center;
+}
+
 .reader-empty {
   color: var(--text-faint);
   padding: 48px 32px;
@@ -297,8 +301,12 @@ body {
 
 /* ---------- Prose ---------- */
 
+/* The measure is in rem, not ch: `ch` here would resolve against the 14px UI
+   font this element inherits, not the larger serif the prose inside it uses,
+   giving a column noticeably narrower than intended. 40rem is roughly 75
+   characters at the prose size. */
 .preview {
-  max-width: 74ch;
+  max-width: 40rem;
   margin: 0 auto;
   padding: 40px 32px 96px;
 }
@@ -692,4 +700,99 @@ body.is-dragging {
 
 .status-save.is-warn {
   color: var(--danger);
+}
+
+
+/* ---------- Reader mode ---------- */
+
+/* With no editor beside it, the preview can take a measure tuned for reading
+   rather than one squeezed into half a window. */
+.pane-preview.is-reader .preview {
+  max-width: 44rem;
+  padding: 64px 40px 30vh;
+}
+
+.pane-preview.is-reader .prose {
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+.pane-loading {
+  padding: 24px 20px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+  margin: auto;
+  padding: 32px;
+  max-width: 34ch;
+}
+
+.empty-message {
+  color: var(--text-faint);
+  font-style: italic;
+  margin: 0 0 24px;
+}
+
+.shortcuts {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.shortcuts div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.shortcuts dt {
+  flex: 1;
+}
+
+.shortcuts dd {
+  margin: 0;
+  display: flex;
+  gap: 3px;
+}
+
+kbd {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.5;
+  min-width: 18px;
+  text-align: center;
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+}
+
+/* ---------- Single-file fallback ---------- */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.dropzone.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone p {
+  margin: 0;
+  font-size: 13px;
 }
