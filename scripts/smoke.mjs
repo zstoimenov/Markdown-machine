@@ -227,6 +227,79 @@ check('confirming the delete removes the file', !(await fileList()).includes('Re
 
 await page.screenshot({ path: `${SP}/smoke-write.png` });
 
+// ---------- M4: formatting, reader mode, fallback ----------
+
+// The delete above left nothing open, which is when the shortcut sheet shows.
+check('the empty state lists the shortcuts', (await page.locator('.shortcuts kbd').count()) >= 7);
+
+await page.getByRole('button', { name: 'Format.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Format');
+
+const formatLine = () =>
+  page.evaluate(
+    () => [...document.querySelectorAll('.cm-line')].find((l) => /table/.test(l.textContent))?.textContent,
+  );
+
+// Select "table" with real keystrokes rather than by poking at the DOM selection.
+await page.locator('.cm-line').filter({ hasText: '## A table' }).first().click();
+await page.keyboard.press('End');
+for (let i = 0; i < 5; i += 1) await page.keyboard.press('Shift+ArrowLeft');
+
+await page.keyboard.press('Control+b');
+check('bold wraps the selection', (await formatLine()) === '## A **table**', await formatLine());
+await page.keyboard.press('Control+b');
+check('bold toggles back off', (await formatLine()) === '## A table', await formatLine());
+
+await page.keyboard.press('Control+i');
+check('italic wraps the same selection', (await formatLine()) === '## A *table*', await formatLine());
+await page.keyboard.press('Control+i');
+
+// Heading cycles from wherever the line currently sits: 2 -> 3 -> off.
+await page.keyboard.press('Home');
+await page.keyboard.press('Control+Shift+h');
+check('heading cycles past its current level', (await formatLine()) === '### A table', await formatLine());
+await page.keyboard.press('Control+Shift+h');
+check('heading cycles off at the end', (await formatLine()) === 'A table', await formatLine());
+
+await page.keyboard.press('Control+k');
+check('link inserts a skeleton at the cursor', (await formatLine()) === '[]()A table', await formatLine());
+
+await page.keyboard.press('Control+Shift+l');
+check('bullet list prefixes the line', (await formatLine())?.startsWith('- '), await formatLine());
+await page.keyboard.press('Control+Shift+l');
+check('bullet list toggles back off', !(await formatLine())?.startsWith('- '), await formatLine());
+
+// Reader mode gets its own measure.
+await page.getByRole('button', { name: 'Read' }).click();
+check('reader mode restyles the preview', await page.locator('.pane-preview.is-reader').isVisible());
+const readerSize = await page.evaluate(() => getComputedStyle(document.querySelector('.is-reader .prose')).fontSize);
+check('reader mode enlarges the type', readerSize === '18px', readerSize);
+await page.screenshot({ path: `${SP}/smoke-reader.png` });
+await page.getByRole('button', { name: 'Split' }).click();
+
+// ---------- Fallback for browsers without folder access ----------
+const fallback = await browser.newPage({ viewport: { width: 1100, height: 800 } });
+// Hide the API before any app code runs — what Firefox and Safari look like.
+await fallback.addInitScript(() => {
+  delete window.showDirectoryPicker;
+});
+await fallback.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+check('unsupported browsers get the explanation', (await fallback.locator('.splash-card h1').innerText()).includes('open folders'));
+check('and are still offered a single file', await fallback.locator('.dropzone').isVisible());
+
+await fallback.setInputFiles('input[type=file]', {
+  name: 'Dropped.md',
+  mimeType: 'text/markdown',
+  buffer: Buffer.from('# Dropped\n\nRead-only, but readable.\n'),
+});
+await fallback.waitForSelector('.prose h1');
+check('a loose file opens and renders', (await fallback.locator('.prose h1').innerText()) === 'Dropped');
+check('the fallback explains itself', (await fallback.locator('.notice').innerText()).includes('read-only'));
+check('the fallback offers a download instead of a save', await fallback.getByRole('button', { name: 'Download' }).isVisible());
+check('no folder actions are offered', (await fallback.getByRole('button', { name: 'New note' }).count()) === 0);
+await fallback.screenshot({ path: `${SP}/smoke-fallback.png` });
+await fallback.close();
+
 console.log(problems.length ? '\nBrowser problems:\n' + problems.join('\n') : '\nNo console or page errors.');
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
 await browser.close();

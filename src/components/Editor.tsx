@@ -4,6 +4,7 @@ import { EditorView, drawSelection, highlightActiveLine, keymap } from '@codemir
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { FORMATTING_KEYMAP } from '../markdown/commands';
 import { tags } from '@lezer/highlight';
 
 /**
@@ -72,7 +73,8 @@ export function Editor({ initialDoc, onChange, onViewReady }: EditorProps) {
           history(),
           drawSelection(),
           highlightActiveLine(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          // Formatting comes first so its bindings win over any default sharing a chord.
+          keymap.of([...FORMATTING_KEYMAP, ...defaultKeymap, ...historyKeymap]),
           markdown({ base: markdownLanguage }),
           EditorView.lineWrapping,
           syntaxHighlighting(highlightStyle),

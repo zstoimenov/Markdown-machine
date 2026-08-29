@@ -1,9 +1,63 @@
 import MarkdownIt from 'markdown-it';
 import anchor from 'markdown-it-anchor';
 import taskLists from 'markdown-it-task-lists';
-import hljs from 'highlight.js/lib/common';
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import c from 'highlight.js/lib/languages/c';
+import cpp from 'highlight.js/lib/languages/cpp';
+import css from 'highlight.js/lib/languages/css';
+import diff from 'highlight.js/lib/languages/diff';
+import go from 'highlight.js/lib/languages/go';
+import ini from 'highlight.js/lib/languages/ini';
+import java from 'highlight.js/lib/languages/java';
+import javascript from 'highlight.js/lib/languages/javascript';
+import json from 'highlight.js/lib/languages/json';
+import markdownLang from 'highlight.js/lib/languages/markdown';
+import python from 'highlight.js/lib/languages/python';
+import rust from 'highlight.js/lib/languages/rust';
+import sql from 'highlight.js/lib/languages/sql';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import yaml from 'highlight.js/lib/languages/yaml';
 import DOMPurify from 'dompurify';
 import { splitFrontmatter } from './frontmatter';
+
+/**
+ * A curated language set rather than highlight.js's `common` bundle, which
+ * carried a lot of weight for languages that never appear in a notes folder.
+ * Anything not registered here still renders — as plain, escaped code.
+ */
+for (const [name, language] of Object.entries({
+  bash,
+  c,
+  cpp,
+  css,
+  diff,
+  go,
+  ini,
+  java,
+  javascript,
+  json,
+  markdown: markdownLang,
+  python,
+  rust,
+  sql,
+  typescript,
+  xml,
+  yaml,
+})) {
+  hljs.registerLanguage(name, language);
+}
+
+// Aliases people actually type in fences.
+hljs.registerAliases(['js', 'jsx', 'mjs'], { languageName: 'javascript' });
+hljs.registerAliases(['ts', 'tsx'], { languageName: 'typescript' });
+hljs.registerAliases(['html', 'svg'], { languageName: 'xml' });
+hljs.registerAliases(['sh', 'shell', 'zsh'], { languageName: 'bash' });
+hljs.registerAliases(['yml'], { languageName: 'yaml' });
+hljs.registerAliases(['py'], { languageName: 'python' });
+hljs.registerAliases(['toml'], { languageName: 'ini' });
+hljs.registerAliases(['md'], { languageName: 'markdown' });
 
 const md: MarkdownIt = new MarkdownIt({
   html: true, // Notes legitimately contain raw HTML. DOMPurify is what makes this safe.

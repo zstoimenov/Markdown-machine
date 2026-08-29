@@ -8,6 +8,7 @@ import {
   type TreeEntry,
   type VaultAdapter,
 } from '../fs/types';
+import { downloadText, openSingleFile } from '../fs/singleFileAdapter';
 import {
   forgetVault,
   isSupported,
@@ -30,6 +31,13 @@ export type VaultStatus =
 
 export type ViewMode = 'split' | 'editor' | 'preview';
 
+/**
+ * 'vault' is the real thing: a folder, read and written in place. 'single-file'
+ * is the fallback for browsers without the File System Access API — one file,
+ * read-only, saved by downloading a copy.
+ */
+export type VaultMode = 'vault' | 'single-file';
+
 export type SaveState =
   | { kind: 'idle' }
   | { kind: 'saving' }
@@ -42,6 +50,7 @@ interface VaultState {
   status: VaultStatus;
   adapter: VaultAdapter | null;
   vaultName: string | null;
+  mode: VaultMode;
   canWrite: boolean;
   rememberedName: string | null;
   children: Record<string, TreeEntry[]>;
@@ -72,6 +81,8 @@ interface VaultState {
   reopen: () => Promise<void>;
   close: () => Promise<void>;
   enableWriting: () => Promise<void>;
+  openLooseFile: (file: File) => Promise<void>;
+  downloadActive: () => void;
   toggleDir: (path: string) => Promise<void>;
   openFile: (path: string) => Promise<void>;
   setDraft: (value: string) => void;
@@ -112,11 +123,12 @@ function isAbort(error: unknown): boolean {
 }
 
 export const useVault = create<VaultState>((set, get) => {
-  async function adopt(adapter: VaultAdapter) {
+  async function adopt(adapter: VaultAdapter, mode: VaultMode = 'vault') {
     const roots = await adapter.listDir('');
     set({
       status: 'ready',
       adapter,
+      mode,
       vaultName: adapter.name,
       canWrite: adapter.writable,
       rememberedName: adapter.name,
@@ -187,6 +199,7 @@ export const useVault = create<VaultState>((set, get) => {
     status: 'checking',
     adapter: null,
     vaultName: null,
+    mode: 'vault',
     canWrite: false,
     rememberedName: null,
     children: {},
@@ -253,6 +266,7 @@ export const useVault = create<VaultState>((set, get) => {
         status: 'empty',
         adapter: null,
         vaultName: null,
+        mode: 'vault',
         canWrite: false,
         rememberedName: null,
         children: {},
@@ -280,6 +294,19 @@ export const useVault = create<VaultState>((set, get) => {
       } catch (error) {
         set({ error: describe(error) });
       }
+    },
+
+    async openLooseFile(file) {
+      const adapter = openSingleFile(file);
+      await adopt(adapter, 'single-file');
+      await load(file.name);
+    },
+
+    downloadActive() {
+      const { activePath, draft, source } = get();
+      const contents = draft ?? source;
+      if (activePath === null || contents === null) return;
+      downloadText(activePath, contents);
     },
 
     async toggleDir(path) {

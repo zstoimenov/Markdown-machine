@@ -1,8 +1,13 @@
-import { useCallback, useDeferredValue, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useDeferredValue, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useVault } from '../state/vaultStore';
 import { useScrollSync } from '../hooks/useScrollSync';
-import { Editor } from './Editor';
+/**
+ * CodeMirror is the single heaviest thing this app loads, and nothing needs it
+ * until a note is actually opened — the folder splash and the reading path
+ * never touch it. Splitting it out keeps it off the critical path.
+ */
+const Editor = lazy(() => import('./Editor').then((module) => ({ default: module.Editor })));
 import { Preview } from './Preview';
 
 const MIN_PANE_PERCENT = 20;
@@ -64,12 +69,14 @@ export function Workspace({ path, source }: { path: string; source: string }) {
           {/* The revision changes when the buffer is replaced from outside the
               editor — a revert, or a reload after a conflict — which is the one
               case where the document has to be pushed in rather than typed. */}
-          <Editor
-            key={`${path}#${revision}`}
-            initialDoc={draft ?? source}
-            onChange={setDraft}
-            onViewReady={setView}
-          />
+          <Suspense fallback={<p className="pane-loading">Loading editor…</p>}>
+            <Editor
+              key={`${path}#${revision}`}
+              initialDoc={draft ?? source}
+              onChange={setDraft}
+              onViewReady={setView}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -88,7 +95,10 @@ export function Workspace({ path, source }: { path: string; source: string }) {
       )}
 
       {showPreview && (
-        <div className="pane pane-preview" ref={setPreviewPane}>
+        <div
+          className={`pane pane-preview${viewMode === 'preview' ? ' is-reader' : ''}`}
+          ref={setPreviewPane}
+        >
           <Preview source={rendered} path={path} />
         </div>
       )}

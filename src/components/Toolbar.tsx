@@ -11,8 +11,10 @@ export function Toolbar() {
   const activePath = useVault((s) => s.activePath);
   const viewMode = useVault((s) => s.viewMode);
   const setViewMode = useVault((s) => s.setViewMode);
+  const mode = useVault((s) => s.mode);
   const pick = useVault((s) => s.pick);
   const close = useVault((s) => s.close);
+  const downloadActive = useVault((s) => s.downloadActive);
 
   return (
     <header className="toolbar">
@@ -39,9 +41,16 @@ export function Toolbar() {
       )}
 
       <div className="toolbar-actions">
-        <button type="button" className="button" onClick={() => void pick()}>
-          Open folder…
-        </button>
+        {mode === 'single-file' && activePath !== null && (
+          <button type="button" className="button button-primary" onClick={downloadActive}>
+            Download
+          </button>
+        )}
+        {mode === 'vault' && (
+          <button type="button" className="button" onClick={() => void pick()}>
+            Open folder…
+          </button>
+        )}
         <button type="button" className="button button-quiet" onClick={() => void close()}>
           Close
         </button>
