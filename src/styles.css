@@ -15,6 +15,7 @@
   --accent-soft: #e6f0ea;
   --danger: #a8352a;
   --code-bg: #f4f4f2;
+  --warn-soft: #fbf0d9;
 
   --syn-keyword: #8250df;
   --syn-string: #0a6b47;
@@ -43,6 +44,7 @@
     --accent-soft: #23342b;
     --danger: #e2857a;
     --code-bg: #202124;
+    --warn-soft: #3a2f1c;
 
     --syn-keyword: #c297f0;
     --syn-string: #7ec9a4;
@@ -76,8 +78,8 @@ body {
 /* ---------- Shell ---------- */
 
 .app {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
@@ -120,19 +122,25 @@ body {
 .workspace {
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  flex: 1;
   min-height: 0;
 }
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
   overflow-y: auto;
   padding: 8px 0;
 }
 
+/* The panes scroll, not the shell — otherwise the editor and the preview would
+   share one scrollbar and there would be nothing to keep in sync. */
 .reader {
-  overflow-y: auto;
+  overflow: hidden;
   min-width: 0;
+  display: flex;
 }
 
 .reader-empty {
@@ -157,11 +165,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status-mode {
-  margin-left: auto;
-  color: var(--text-faint);
 }
 
 .status-error {
@@ -517,4 +520,176 @@ body {
 }
 .hljs-strong {
   font-weight: 600;
+}
+
+
+/* ---------- Split view ---------- */
+
+.split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.pane {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.pane-editor {
+  flex: none;
+  border-right: 1px solid var(--border);
+}
+
+.pane-preview {
+  flex: 1;
+}
+
+/* In single-pane modes the editor stops being width-constrained by the divider. */
+.split > .pane-editor:only-child {
+  flex: 1;
+}
+
+.editor {
+  height: 100%;
+}
+
+.divider {
+  flex: none;
+  width: 5px;
+  margin: 0 -2px;
+  z-index: 1;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.divider:hover,
+body.is-dragging .divider {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+/* The divider holds pointer capture for the duration of the drag, so the only
+   thing left to suppress is text selection sweeping across both panes. */
+body.is-dragging {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* ---------- Segmented control ---------- */
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segment {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 0;
+  border-right: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.segment:last-child {
+  border-right: 0;
+}
+
+.segment:hover {
+  color: var(--text);
+}
+
+.segment.is-on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ---------- Save state ---------- */
+
+.status-save {
+  margin-left: auto;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.status-save.is-dirty {
+  color: var(--accent);
+}
+
+
+/* ---------- Banners ---------- */
+
+.notice,
+.conflict {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.conflict {
+  background: var(--warn-soft);
+}
+
+.conflict-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.notice .button {
+  margin-left: auto;
+}
+
+/* ---------- Sidebar actions ---------- */
+
+.tree-actions {
+  display: flex;
+  gap: 12px;
+  padding: 2px 12px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.link-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.link-button.is-danger:not(:disabled) {
+  color: var(--danger);
+}
+
+/* ---------- Save state ---------- */
+
+.is-warn {
+  color: var(--danger);
+}
+
+.status-save.is-warn {
+  color: var(--danger);
 }

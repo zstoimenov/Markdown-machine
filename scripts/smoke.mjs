@@ -1,0 +1,233 @@
+/**
+ * Smoke test for the read and write paths, driven through dev-fixture.html.
+ *
+ * Playwright is deliberately not a dependency of this project — installing it
+ * pulls a browser download that everyone else would pay for. To run this:
+ *
+ *   npm install --no-save playwright
+ *   npx playwright install chromium
+ *   npm run dev            # in another terminal
+ *   node scripts/smoke.mjs
+ *
+ * Set CHROMIUM to point at an existing browser binary to skip the download.
+ */
+import { chromium } from 'playwright';
+
+const SP = process.env.SHOTS ?? '.';
+const BASE = process.env.BASE ?? 'http://localhost:5173';
+
+const browser = await chromium.launch(
+  process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {},
+);
+const page = await browser.newPage({ viewport: { width: 1400, height: 860 } });
+
+const problems = [];
+page.on('console', (m) => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
+page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
+
+let failures = 0;
+const check = (label, ok, detail = '') => {
+  if (!ok) failures += 1;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail && !ok ? `  (${detail})` : ''}`);
+};
+
+await page.goto(`${BASE}/dev-fixture.html`, { waitUntil: 'networkidle' });
+
+// ---------- M1 regressions ----------
+await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.waitForSelector('.prose h1');
+check('M1: preview still renders', (await page.locator('.prose table tbody tr').count()) === 2);
+check('M1: images still resolve', (await page.locator('.prose img').first().getAttribute('src') || '').startsWith('blob:'));
+
+// ---------- Editor ----------
+check('editor mounts alongside the preview', await page.locator('.cm-editor').isVisible());
+check('markdown syntax is highlighted', (await page.locator('.cm-content .tok-heading, .cm-content [class*=ͼ]').count()) > 0);
+
+// The first line of this note is frontmatter, so target the heading itself.
+const headingLine = page.locator('.cm-line').filter({ hasText: /^# Welcome$/ }).first();
+await headingLine.click();
+await page.keyboard.press('End');
+await page.keyboard.type(' EDITED');
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent?.includes('EDITED'));
+check('typing flows through to the live preview', true);
+check('dirty state reaches the status bar', (await page.locator('.status-save').innerText()).includes('unsaved'));
+
+// Undo history survives a re-render triggered by the keystroke itself.
+await page.keyboard.press('Control+z');
+await page.waitForFunction(() => !document.querySelector('.prose h1')?.textContent?.includes('EDITED'));
+check('undo history survives the render cycle', true);
+await page.screenshot({ path: `${SP}/smoke-split.png` });
+
+// ---------- View modes ----------
+await page.getByRole('button', { name: 'Read' }).click();
+check('read mode hides the editor', (await page.locator('.cm-editor').count()) === 0);
+await page.getByRole('button', { name: 'Write' }).click();
+check('write mode hides the preview', (await page.locator('.pane-preview').count()) === 0);
+await page.getByRole('button', { name: 'Split' }).click();
+check('split mode restores both panes', (await page.locator('.cm-editor').count()) === 1 && (await page.locator('.pane-preview').count()) === 1);
+
+// ---------- Divider ----------
+const widthBefore = (await page.locator('.pane-editor').boundingBox()).width;
+const divider = await page.locator('.divider').boundingBox();
+await page.mouse.move(divider.x + 2, divider.y + 300);
+await page.mouse.down();
+await page.mouse.move(divider.x - 200, divider.y + 300, { steps: 10 });
+await page.mouse.up();
+const widthAfter = (await page.locator('.pane-editor').boundingBox()).width;
+check('divider resizes the panes', widthAfter < widthBefore - 150, `${widthBefore} -> ${widthAfter}`);
+await page.locator('.divider').dblclick();
+check('double-click resets the split', Math.abs((await page.locator('.pane-editor').boundingBox()).width - widthBefore) < 2);
+
+// ---------- Scroll sync ----------
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
+await page.waitForTimeout(300);
+
+// Reads whichever block is visually at the top of a pane — black-box, no internals.
+const topLineOf = (selector) =>
+  page.evaluate((sel) => {
+    const pane = document.querySelector(sel);
+    const box = pane.getBoundingClientRect();
+    const el = document.elementFromPoint(box.left + 40, box.top + 6);
+    return el?.closest('.cm-line, [data-line]')?.textContent?.trim().slice(0, 40) ?? '';
+  }, selector);
+
+async function previewToEditor(sectionText) {
+  await page.evaluate((text) => {
+    const pane = document.querySelector('.pane-preview');
+    const heading = [...pane.querySelectorAll('h2')].find((h) => h.textContent.trim() === text);
+    pane.scrollTop += heading.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+  }, sectionText);
+  await page.waitForTimeout(250);
+  return topLineOf('.pane-editor');
+}
+
+for (const section of ['Section 4', 'Section 7']) {
+  const editorTop = await previewToEditor(section);
+  check(`preview → editor lands on "${section}"`, editorTop.includes(section), `editor top: "${editorTop}"`);
+}
+
+// Now the other direction, from a pane the sync is not already parked on.
+await page.evaluate(() => { document.querySelector('.pane-editor .cm-scroller').scrollTop = 0; });
+await page.waitForTimeout(250);
+await page.evaluate(() => {
+  const scroller = document.querySelector('.pane-editor .cm-scroller');
+  scroller.scrollTop = scroller.scrollHeight * 0.45;
+});
+await page.waitForTimeout(300);
+const eTop = await topLineOf('.pane-editor');
+const pTop = await topLineOf('.pane-preview');
+const section = (eTop.match(/Section \d/) ?? [])[0];
+check('editor → preview keeps the panes on the same block', Boolean(section) && pTop.includes(section), `editor "${eTop}" vs preview "${pTop}"`);
+await page.screenshot({ path: `${SP}/smoke-scrollsync.png` });
+
+// ---------- Guard ----------
+await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.waitForSelector('.prose h1');
+await page.locator('.cm-line').first().click();
+await page.keyboard.type('x');
+await page.waitForFunction(() => document.querySelector('.status-save')?.textContent?.includes('unsaved'));
+page.once('dialog', (d) => d.dismiss());
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForTimeout(200);
+check('leaving a modified note asks first, and staying works', (await page.locator('.status-path').innerText()) === 'Welcome.md');
+
+// ---------- M3: writing to the vault ----------
+const fileText = (path) => page.evaluate((p) => window.mmFixture.read(p), path);
+const fileList = () => page.evaluate(() => window.mmFixture.list());
+const waitForSaved = () =>
+  page.waitForFunction(() => /^saved/.test(document.querySelector('.status-save')?.textContent ?? ''));
+
+// Reset to a clean note; the guard test above left Welcome.md modified.
+page.once('dialog', (d) => d.accept());
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
+await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.waitForSelector('.prose h1');
+
+// Autosave
+await page.locator('.cm-line').filter({ hasText: /^# Welcome$/ }).first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' Autosaved');
+check('typing marks the note unsaved', (await page.locator('.status-save').innerText()).includes('unsaved'));
+await waitForSaved();
+check('autosave writes the buffer to the vault', (await fileText('Welcome.md')).includes('# Welcome Autosaved'));
+
+// Explicit save
+await page.keyboard.type(' Twice');
+await page.keyboard.press('Control+s');
+await waitForSaved();
+check('Ctrl+S saves immediately', (await fileText('Welcome.md')).includes('# Welcome Autosaved Twice'));
+
+// Revert restores the file as it stood when the note was opened, and saves that.
+await page.getByRole('button', { name: 'Revert' }).click();
+await waitForSaved();
+check('revert restores the file as it was opened', (await fileText('Welcome.md')).includes('# Welcome\n'));
+check('revert clears its own affordance', (await page.getByRole('button', { name: 'Revert' }).count()) === 0);
+check('revert reaches the editor, not just the store', !(await page.locator('.cm-content').innerText()).includes('Autosaved'));
+
+// Conflict: something else writes the file after we read it.
+await page.evaluate(() => window.mmFixture.touch('Welcome.md', '# Changed by somebody else\n'));
+await page.locator('.cm-line').first().click();
+await page.keyboard.type('x');
+await page.waitForSelector('.conflict');
+check('a file changed underneath us stops autosave', (await fileText('Welcome.md')) === '# Changed by somebody else\n');
+await page.screenshot({ path: `${SP}/smoke-conflict.png` });
+await page.waitForTimeout(1200);
+check('autosave stays stopped while the conflict stands', (await fileText('Welcome.md')) === '# Changed by somebody else\n');
+
+await page.getByRole('button', { name: /Discard mine/ }).click();
+await page.waitForFunction(() => document.querySelector('.conflict') === null);
+check('reloading from disk takes the other side', (await page.locator('.cm-content').innerText()).includes('Changed by somebody else'));
+// The pre-conflict snapshot must not survive the reload, or Revert would undo
+// the other program's changes that were just deliberately kept.
+check('reloading drops the stale revert snapshot', (await page.getByRole('button', { name: 'Revert' }).count()) === 0);
+
+// And the overwrite branch of the same choice.
+await page.evaluate(() => window.mmFixture.touch('Welcome.md', '# Changed again\n'));
+await page.locator('.cm-line').first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' MINE');
+await page.waitForSelector('.conflict');
+await page.getByRole('button', { name: /Keep mine/ }).click();
+await waitForSaved();
+check('overwriting takes our side', (await fileText('Welcome.md')).includes('MINE'));
+
+// Create
+page.once('dialog', (d) => d.accept('Fresh note'));
+await page.getByRole('button', { name: 'New note' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Fresh note.md');
+check('a new note is created with a .md extension added', (await fileList()).includes('Fresh note.md'));
+check('the new note opens', await page.getByRole('button', { name: 'Fresh note.md' }).isVisible());
+
+// Create over an existing name is refused rather than clobbering.
+page.once('dialog', (d) => d.accept('Welcome.md'));
+await page.getByRole('button', { name: 'New note' }).click();
+await page.waitForSelector('.status .is-warn');
+check('creating over an existing note is refused', (await fileText('Welcome.md')).includes('MINE'));
+
+// Rename
+await page.getByRole('button', { name: 'Fresh note.md' }).click();
+await page.waitForTimeout(150);
+page.once('dialog', (d) => d.accept('Renamed note.md'));
+await page.getByRole('button', { name: 'Rename' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Renamed note.md');
+const afterRename = await fileList();
+check('rename moves the file', afterRename.includes('Renamed note.md') && !afterRename.includes('Fresh note.md'));
+
+// Delete, declined then accepted.
+page.once('dialog', (d) => d.dismiss());
+await page.getByRole('button', { name: 'Delete' }).click();
+await page.waitForTimeout(150);
+check('declining the delete confirm keeps the file', (await fileList()).includes('Renamed note.md'));
+page.once('dialog', (d) => d.accept());
+await page.getByRole('button', { name: 'Delete' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path') === null);
+check('confirming the delete removes the file', !(await fileList()).includes('Renamed note.md'));
+
+await page.screenshot({ path: `${SP}/smoke-write.png` });
+
+console.log(problems.length ? '\nBrowser problems:\n' + problems.join('\n') : '\nNo console or page errors.');
+console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
+await browser.close();
+process.exit(failures ? 1 : 0);

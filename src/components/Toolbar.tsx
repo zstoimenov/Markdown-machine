@@ -1,7 +1,16 @@
-import { useVault } from '../state/vaultStore';
+import { useVault, type ViewMode } from '../state/vaultStore';
+
+const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
+  { mode: 'editor', label: 'Write', hint: 'Editor only' },
+  { mode: 'split', label: 'Split', hint: 'Editor and preview side by side' },
+  { mode: 'preview', label: 'Read', hint: 'Preview only' },
+];
 
 export function Toolbar() {
   const vaultName = useVault((s) => s.vaultName);
+  const activePath = useVault((s) => s.activePath);
+  const viewMode = useVault((s) => s.viewMode);
+  const setViewMode = useVault((s) => s.setViewMode);
   const pick = useVault((s) => s.pick);
   const close = useVault((s) => s.close);
 
@@ -11,6 +20,24 @@ export function Toolbar() {
       <span className="vault-name" title={vaultName ?? undefined}>
         {vaultName}
       </span>
+
+      {activePath !== null && (
+        <div className="segmented" role="group" aria-label="View mode">
+          {MODES.map(({ mode, label, hint }) => (
+            <button
+              key={mode}
+              type="button"
+              title={hint}
+              aria-pressed={viewMode === mode}
+              className={`segment${viewMode === mode ? ' is-on' : ''}`}
+              onClick={() => setViewMode(mode)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="toolbar-actions">
         <button type="button" className="button" onClick={() => void pick()}>
           Open folder…

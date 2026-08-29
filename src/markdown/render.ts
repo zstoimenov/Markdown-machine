@@ -26,6 +26,27 @@ const md: MarkdownIt = new MarkdownIt({
   .use(anchor, { permalink: false, tabIndex: false })
   .use(taskLists, { enabled: false, label: true });
 
+/**
+ * Stamp every top-level block with the source line it came from. Scroll sync
+ * interpolates between these anchors instead of scrolling both panes by the same
+ * percentage, which drifts badly as soon as a document contains anything —
+ * a code block, a table, an image — whose rendered height differs from its
+ * source height.
+ *
+ * `state.tokens` is the top level only, which is exactly the granularity worth
+ * anchoring: one marker per paragraph, heading, list or fence.
+ */
+md.core.ruler.push('mm_line_anchors', (state) => {
+  const offset: number = (state.env as { mmLineOffset?: number }).mmLineOffset ?? 0;
+  for (const token of state.tokens) {
+    // nesting -1 is a closing tag, which carries no attributes of its own.
+    if (token.map && token.nesting !== -1) {
+      token.attrSet('data-line', String(token.map[0] + offset));
+    }
+  }
+  return true;
+});
+
 const EXTERNAL = /^(?:https?:|mailto:|data:|blob:)/i;
 
 /**
@@ -66,7 +87,12 @@ export interface RenderedNote {
 
 export function renderMarkdown(source: string): RenderedNote {
   const { entries, body } = splitFrontmatter(source);
+  // Frontmatter is stripped before parsing, so markdown-it's line numbers are
+  // short by however many lines it took up. Put them back on the file's terms.
+  const lineOffset = source.slice(0, source.length - body.length).split('\n').length - 1;
   // Every path to the DOM goes through here. There is no unsanitized escape hatch.
-  const html = DOMPurify.sanitize(md.render(body), { ADD_ATTR: ['target'] });
+  const html = DOMPurify.sanitize(md.render(body, { mmLineOffset: lineOffset }), {
+    ADD_ATTR: ['target'],
+  });
   return { html, frontmatter: entries };
 }

@@ -62,10 +62,42 @@ function Level({
 
 export function FileTree() {
   const roots = useVault((s) => s.children['']);
+  const activePath = useVault((s) => s.activePath);
+  const canWrite = useVault((s) => s.canWrite);
+  const createNote = useVault((s) => s.createNote);
+  const renameActive = useVault((s) => s.renameActive);
+  const deleteActive = useVault((s) => s.deleteActive);
+
   if (!roots) return null;
+
   return (
-    <nav className="tree" aria-label="Notes">
-      <Level entries={roots} depth={0} emptyLabel="No markdown files in this folder." />
-    </nav>
+    <>
+      {canWrite && (
+        <div className="tree-actions">
+          <button type="button" className="link-button" onClick={() => void createNote()}>
+            New note
+          </button>
+          <button
+            type="button"
+            className="link-button"
+            disabled={activePath === null}
+            onClick={() => void renameActive()}
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            className="link-button is-danger"
+            disabled={activePath === null}
+            onClick={() => void deleteActive()}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+      <nav className="tree" aria-label="Notes">
+        <Level entries={roots} depth={0} emptyLabel="No markdown files in this folder." />
+      </nav>
+    </>
   );
 }
