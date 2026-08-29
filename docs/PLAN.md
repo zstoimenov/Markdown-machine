@@ -58,20 +58,26 @@ src/
 
 ```ts
 interface VaultAdapter {
-  openVault(): Promise<VaultRoot>;
-  listTree(): Promise<TreeNode[]>;
+  readonly name: string;
+  listDir(path: string): Promise<TreeEntry[]>;   // lazy: immediate children only
   readFile(path: string): Promise<string>;
-  writeFile(path: string, contents: string): Promise<void>;
-  createFile(path: string): Promise<void>;
-  renameFile(from: string, to: string): Promise<void>;
-  deleteFile(path: string): Promise<void>;
-  watch?(onChange: (path: string) => void): () => void;
+  readBinary(path: string): Promise<Blob>;       // images referenced from a note
 }
 ```
 
 Every component talks to this interface, never to the browser API directly. Swapping in
 a local server, a git backend or cloud sync later means writing one new adapter and
 changing one line — no UI churn.
+
+Two things changed from the first sketch of this interface, both while building M1:
+
+- `listTree()` became `listDir(path)`. A single whole-tree walk contradicts the
+  lazy-loading answer to the large-vault risk below; directories are now read on expand
+  and cached.
+- `writeFile` / `createFile` / `renameFile` / `deleteFile` are **not declared yet**. They
+  arrive in M3 together with the dirty-state tracking, the confirm-before-destructive
+  guard and the undo buffer that make writing to real files safe. Declaring them early,
+  as unimplemented stubs, would only invite calling them.
 
 ## 4. Stack
 
@@ -118,13 +124,23 @@ multiple tabs · Mermaid and math · external-change watching · git integration
 
 | # | Milestone | Ships |
 |---|---|---|
-| M0 | Scaffold | Vite + TS + React building and running, CI-free, README updated |
-| M1 | Read the vault | Open folder, persisted handle, file tree, click-to-read rendered preview |
+| M0 | Scaffold | ✅ Vite + TS + React building and running, CI-free, README updated |
+| M1 | Read the vault | ✅ Open folder, persisted handle, file tree, click-to-read rendered preview |
 | M2 | Edit | CodeMirror pane, split layout, scroll sync, live preview on keystroke |
 | M3 | Write back | Autosave + `Cmd+S`, dirty state, new/rename/delete, unsaved-changes guard |
 | M4 | Feel good | Themes, reader mode, formatting shortcuts, word count, empty/error states, fallback banner |
 
 Each milestone is a working app, not a layer — M1 alone is already a usable markdown reader.
+
+**M0 and M1 are done.** What shipped beyond the milestone line, because it fell out of the
+reading path naturally: relative-path images resolved through the adapter and shown as blob
+URLs (with a visible notice when one is missing), links between notes navigating inside the
+vault, a frontmatter metadata strip, light/dark themes driven off the OS, and a word count.
+
+Since the native folder picker cannot be automated, `dev-fixture.html` mounts the real app
+against an in-memory vault. The M1 read path was driven end-to-end in Chromium through it —
+tree, lazy directory expansion, GFM tables, task lists, highlighted code, image resolution,
+internal-link navigation and both themes.
 
 ## 7. Risks and how they're handled
 
