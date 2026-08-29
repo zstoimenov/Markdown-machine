@@ -65,6 +65,11 @@ body,
   height: 100%;
 }
 
+#root {
+  /* The address bar shrinking must not leave the status bar off-screen. */
+  height: 100dvh;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -795,4 +800,177 @@ kbd {
 .dropzone p {
   margin: 0;
   font-size: 13px;
+}
+
+
+/* ---------- Repair banner ---------- */
+
+.notice-repair {
+  background: var(--warn-soft);
+}
+
+.notice-body {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---------- Touch and small screens ---------- */
+
+.icon-button {
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  width: 36px;
+  height: 32px;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  /* One column: the tree becomes a drawer over the content rather than beside it. */
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: min(78vw, 300px);
+    padding-top: 12px;
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 0.18s ease,
+      visibility 0.18s;
+    box-shadow: 0 0 24px rgb(0 0 0 / 25%);
+  }
+
+  .sidebar.is-open {
+    visibility: visible;
+    transform: none;
+  }
+
+  .toolbar {
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  /* The wordmark is the first thing to go; the folder name is the useful one. */
+  .brand {
+    display: none;
+  }
+
+  .vault-name {
+    max-width: 10ch;
+  }
+
+  .toolbar-actions .button-quiet {
+    display: none;
+  }
+
+  /* Comfortable thumb targets, and no iOS zoom-on-focus at 16px. */
+  .tree-row {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .link-button {
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .segment {
+    padding: 8px 14px;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .preview {
+    padding: 24px 18px 30vh;
+  }
+
+  .pane-preview.is-reader .preview {
+    padding: 28px 18px 30vh;
+  }
+
+  .prose,
+  .pane-preview.is-reader .prose {
+    font-size: 17px;
+  }
+
+  .cm-scroller {
+    font-size: 16px !important;
+  }
+
+  .notice,
+  .conflict {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .notice-actions,
+  .conflict-actions {
+    margin-left: 0;
+  }
+
+  .notice .button {
+    margin-left: 0;
+  }
+
+  /* Room for the gesture bar, so the status bar is not sitting under it. */
+  .status {
+    height: auto;
+    min-height: 30px;
+    padding: 4px 10px calc(4px + env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .empty-state {
+    padding: 24px 20px;
+  }
+}
+
+/* Narrower still: drop what is merely nice to know. */
+@media (max-width: 420px) {
+  .vault-name {
+    display: none;
+  }
+
+  .status-path {
+    max-width: 14ch;
+  }
+}
+
+/* Touch devices cannot drag a file onto a page, so lead with the button. */
+@media (hover: none) {
+  .dropzone p {
+    display: none;
+  }
 }

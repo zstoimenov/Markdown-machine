@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useVault } from '../state/vaultStore';
+import { useIsNarrow } from '../hooks/useMediaQuery';
 import { useScrollSync } from '../hooks/useScrollSync';
 /**
  * CodeMirror is the single heaviest thing this app loads, and nothing needs it
@@ -16,9 +17,16 @@ export function Workspace({ path, source }: { path: string; source: string }) {
   const draft = useVault((s) => s.draft);
   const revision = useVault((s) => s.revision);
   const setDraft = useVault((s) => s.setDraft);
-  const viewMode = useVault((s) => s.viewMode);
+  const stored = useVault((s) => s.viewMode);
+  const narrow = useIsNarrow();
+  // Resizing a desktop window down must not leave two unreadable columns, so the
+  // effective mode is derived rather than written back over the stored choice.
+  // A phone lands on the rendered note rather than the source: reading is what
+  // most phone visits are for, and on Android the file cannot be saved anyway.
+  const viewMode = narrow && stored === 'split' ? 'preview' : stored;
 
   const [view, setView] = useState<EditorView | null>(null);
+  const setEditorView = useVault((s) => s.setEditorView);
   const [previewPane, setPreviewPane] = useState<HTMLElement | null>(null);
   const [editorPercent, setEditorPercent] = useState(50);
   const splitRef = useRef<HTMLDivElement>(null);
@@ -74,7 +82,10 @@ export function Workspace({ path, source }: { path: string; source: string }) {
               key={`${path}#${revision}`}
               initialDoc={draft ?? source}
               onChange={setDraft}
-              onViewReady={setView}
+              onViewReady={(next) => {
+                setView(next);
+                setEditorView(next);
+              }}
             />
           </Suspense>
         </div>

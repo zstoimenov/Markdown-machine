@@ -114,7 +114,24 @@ const FORMAT = `# Format
 Body text for the formatting commands to chew on.
 `;
 
+// A note in the state an LLM export leaves behind: JSON envelope, literal
+// escape sequences, and a stray transport fragment in the middle.
+const BROKEN = JSON.stringify({
+  id: 'msg_01',
+  role: 'assistant',
+  content: [
+    {
+      type: 'text',
+      text:
+        '# Broken note\\n\\n## Findings\\n\\n' +
+        '{"type":"text","text":"The first finding."}\\n\\n' +
+        '- one\\n- two\\n\\nClosing paragraph.\\n',
+    },
+  ],
+});
+
 const files = new Map<string, { text: string; modifiedAt: number }>([
+  ['Broken.md', { text: BROKEN, modifiedAt: Date.now() }],
   ['Welcome.md', { text: WELCOME, modifiedAt: Date.now() }],
   ['Format.md', { text: FORMAT, modifiedAt: Date.now() }],
   ['Long.md', { text: LONG_NOTE, modifiedAt: Date.now() }],

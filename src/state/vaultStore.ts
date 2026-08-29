@@ -8,7 +8,9 @@ import {
   type TreeEntry,
   type VaultAdapter,
 } from '../fs/types';
+import type { EditorView } from '@codemirror/view';
 import { downloadText, openSingleFile } from '../fs/singleFileAdapter';
+import { diagnose, repair, type RepairIssue } from '../markdown/repair';
 import {
   forgetVault,
   isSupported,
@@ -71,6 +73,18 @@ interface VaultState {
   originals: Record<string, string>;
   /** Bumped to force the editor to reload its document from the store. */
   revision: number;
+  /**
+   * The live editor, when one is mounted. Held here so a repair can be applied
+   * as an ordinary edit inside CodeMirror — which keeps it on the undo stack —
+   * rather than by swapping the document out from under it.
+   */
+  editorView: EditorView | null;
+  /** Problems found in the open file that a repair would address. */
+  repairs: RepairIssue[];
+  /** Set once someone has waved the repair offer away for this file. */
+  repairDismissed: boolean;
+  /** Only meaningful at phone widths, where the file tree is a drawer. */
+  sidebarOpen: boolean;
   loadingFile: boolean;
   saveState: SaveState;
   viewMode: ViewMode;
@@ -87,6 +101,10 @@ interface VaultState {
   openFile: (path: string) => Promise<void>;
   setDraft: (value: string) => void;
   setViewMode: (mode: ViewMode) => void;
+  setEditorView: (view: EditorView | null) => void;
+  repairActive: () => void;
+  dismissRepair: () => void;
+  setSidebarOpen: (open: boolean) => void;
 
   save: (options?: { overwrite?: boolean }) => Promise<void>;
   reloadFromDisk: () => Promise<void>;
@@ -181,6 +199,8 @@ export const useVault = create<VaultState>((set, get) => {
           loadingFile: false,
           revision: state.revision + 1,
           saveState: { kind: 'idle' },
+          repairs: diagnose(text),
+          repairDismissed: false,
         };
       });
     } catch (error) {
@@ -211,6 +231,10 @@ export const useVault = create<VaultState>((set, get) => {
     modifiedAt: null,
     originals: {},
     revision: 0,
+    editorView: null,
+    repairs: [],
+    repairDismissed: false,
+    sidebarOpen: false,
     loadingFile: false,
     saveState: { kind: 'idle' },
     viewMode: 'split',
@@ -343,6 +367,9 @@ export const useVault = create<VaultState>((set, get) => {
 
     async openFile(path) {
       const state = get();
+      // Choosing anything in the drawer dismisses it, including the note already
+      // open — otherwise that tap does nothing and the drawer stays in the way.
+      set({ sidebarOpen: false });
       if (!state.adapter || state.activePath === path) return;
 
       // Autosave normally means there is nothing pending, but a failed or
@@ -368,6 +395,47 @@ export const useVault = create<VaultState>((set, get) => {
 
     setViewMode(mode) {
       set({ viewMode: mode });
+    },
+
+    setEditorView(view) {
+      set({ editorView: view });
+    },
+
+    /**
+     * Rewrite the buffer, never the file. Autosave carries it to disk a moment
+     * later, by which point Ctrl+Z and Revert both still undo it — a repair is a
+     * suggestion to review, not something done to someone's notes behind their back.
+     */
+    repairActive() {
+      const { draft, source, editorView } = get();
+      const current = draft ?? source;
+      if (current === null) return;
+
+      const { text } = repair(current);
+      if (text === current) {
+        set({ repairs: [], repairDismissed: true });
+        return;
+      }
+
+      if (editorView) {
+        // One transaction, so a single Ctrl+Z takes the whole repair back.
+        editorView.dispatch({
+          changes: { from: 0, to: editorView.state.doc.length, insert: text },
+          userEvent: 'input.repair',
+        });
+      } else {
+        // No editor mounted (reading mode): push it through the store instead.
+        set((state) => ({ draft: text, revision: state.revision + 1 }));
+      }
+      set({ repairs: [], repairDismissed: true });
+    },
+
+    dismissRepair() {
+      set({ repairDismissed: true });
+    },
+
+    setSidebarOpen(open) {
+      set({ sidebarOpen: open });
     },
 
     async save(options) {

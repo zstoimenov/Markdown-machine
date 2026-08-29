@@ -1,3 +1,4 @@
+import { useIsNarrow } from '../hooks/useMediaQuery';
 import { useVault, type ViewMode } from '../state/vaultStore';
 
 const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
@@ -7,6 +8,9 @@ const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
 ];
 
 export function Toolbar() {
+  const narrow = useIsNarrow();
+  const sidebarOpen = useVault((s) => s.sidebarOpen);
+  const setSidebarOpen = useVault((s) => s.setSidebarOpen);
   const vaultName = useVault((s) => s.vaultName);
   const activePath = useVault((s) => s.activePath);
   const viewMode = useVault((s) => s.viewMode);
@@ -18,6 +22,17 @@ export function Toolbar() {
 
   return (
     <header className="toolbar">
+      {narrow && (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Notes"
+          aria-expanded={sidebarOpen}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          ☰
+        </button>
+      )}
       <h1 className="brand">Markdown Machine</h1>
       <span className="vault-name" title={vaultName ?? undefined}>
         {vaultName}
@@ -25,7 +40,7 @@ export function Toolbar() {
 
       {activePath !== null && (
         <div className="segmented" role="group" aria-label="View mode">
-          {MODES.map(({ mode, label, hint }) => (
+          {MODES.filter(({ mode }) => !(narrow && mode === 'split')).map(({ mode, label, hint }) => (
             <button
               key={mode}
               type="button"
