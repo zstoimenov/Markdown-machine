@@ -21,6 +21,11 @@ interface FileSystemDirectoryHandle {
   keys(): AsyncIterableIterator<string>;
 }
 
+interface FileSystemFileHandle {
+  /** Chrome-only; feature-detected at the call site, with a copy-and-delete fallback. */
+  move?: (destination: string | FileSystemDirectoryHandle, name?: string) => Promise<void>;
+}
+
 interface DirectoryPickerOptions {
   id?: string;
   mode?: 'read' | 'readwrite';

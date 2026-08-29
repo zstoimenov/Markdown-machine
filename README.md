@@ -6,13 +6,17 @@ already are.
 
 ## Status
 
-M0–M2 are done: open a folder, browse it, and edit notes in a split view with a
-scroll-synced live preview.
+M0–M3 are done. Open a folder, browse it, and edit notes in a split view with a
+scroll-synced live preview. Changes are written back to the real files: autosave shortly
+after you stop typing, or `Ctrl`/`Cmd`+`S` to save now. New, rename and delete live in the
+sidebar.
 
-**Edits are not written to disk yet** — that is M3. Leaving a modified note asks before
-discarding it, and reloading the page warns, but nothing is saved. The status bar says so.
+If a note changes on disk while you have it open, the save is refused rather than
+overwriting it, and you are asked which side to keep. The status bar always says where
+things stand, and Revert takes a file back to how it was when you opened it.
 
-See [docs/PLAN.md](docs/PLAN.md) for the plan and the milestones.
+Still to come (M4): themes and reader-mode polish, formatting shortcuts, and trimming the
+bundle. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Requirements
 

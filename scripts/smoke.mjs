@@ -132,6 +132,101 @@ await page.getByRole('button', { name: 'Long.md' }).click();
 await page.waitForTimeout(200);
 check('leaving a modified note asks first, and staying works', (await page.locator('.status-path').innerText()) === 'Welcome.md');
 
+// ---------- M3: writing to the vault ----------
+const fileText = (path) => page.evaluate((p) => window.mmFixture.read(p), path);
+const fileList = () => page.evaluate(() => window.mmFixture.list());
+const waitForSaved = () =>
+  page.waitForFunction(() => /^saved/.test(document.querySelector('.status-save')?.textContent ?? ''));
+
+// Reset to a clean note; the guard test above left Welcome.md modified.
+page.once('dialog', (d) => d.accept());
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
+await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.waitForSelector('.prose h1');
+
+// Autosave
+await page.locator('.cm-line').filter({ hasText: /^# Welcome$/ }).first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' Autosaved');
+check('typing marks the note unsaved', (await page.locator('.status-save').innerText()).includes('unsaved'));
+await waitForSaved();
+check('autosave writes the buffer to the vault', (await fileText('Welcome.md')).includes('# Welcome Autosaved'));
+
+// Explicit save
+await page.keyboard.type(' Twice');
+await page.keyboard.press('Control+s');
+await waitForSaved();
+check('Ctrl+S saves immediately', (await fileText('Welcome.md')).includes('# Welcome Autosaved Twice'));
+
+// Revert restores the file as it stood when the note was opened, and saves that.
+await page.getByRole('button', { name: 'Revert' }).click();
+await waitForSaved();
+check('revert restores the file as it was opened', (await fileText('Welcome.md')).includes('# Welcome\n'));
+check('revert clears its own affordance', (await page.getByRole('button', { name: 'Revert' }).count()) === 0);
+check('revert reaches the editor, not just the store', !(await page.locator('.cm-content').innerText()).includes('Autosaved'));
+
+// Conflict: something else writes the file after we read it.
+await page.evaluate(() => window.mmFixture.touch('Welcome.md', '# Changed by somebody else\n'));
+await page.locator('.cm-line').first().click();
+await page.keyboard.type('x');
+await page.waitForSelector('.conflict');
+check('a file changed underneath us stops autosave', (await fileText('Welcome.md')) === '# Changed by somebody else\n');
+await page.screenshot({ path: `${SP}/smoke-conflict.png` });
+await page.waitForTimeout(1200);
+check('autosave stays stopped while the conflict stands', (await fileText('Welcome.md')) === '# Changed by somebody else\n');
+
+await page.getByRole('button', { name: /Discard mine/ }).click();
+await page.waitForFunction(() => document.querySelector('.conflict') === null);
+check('reloading from disk takes the other side', (await page.locator('.cm-content').innerText()).includes('Changed by somebody else'));
+// The pre-conflict snapshot must not survive the reload, or Revert would undo
+// the other program's changes that were just deliberately kept.
+check('reloading drops the stale revert snapshot', (await page.getByRole('button', { name: 'Revert' }).count()) === 0);
+
+// And the overwrite branch of the same choice.
+await page.evaluate(() => window.mmFixture.touch('Welcome.md', '# Changed again\n'));
+await page.locator('.cm-line').first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' MINE');
+await page.waitForSelector('.conflict');
+await page.getByRole('button', { name: /Keep mine/ }).click();
+await waitForSaved();
+check('overwriting takes our side', (await fileText('Welcome.md')).includes('MINE'));
+
+// Create
+page.once('dialog', (d) => d.accept('Fresh note'));
+await page.getByRole('button', { name: 'New note' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Fresh note.md');
+check('a new note is created with a .md extension added', (await fileList()).includes('Fresh note.md'));
+check('the new note opens', await page.getByRole('button', { name: 'Fresh note.md' }).isVisible());
+
+// Create over an existing name is refused rather than clobbering.
+page.once('dialog', (d) => d.accept('Welcome.md'));
+await page.getByRole('button', { name: 'New note' }).click();
+await page.waitForSelector('.status .is-warn');
+check('creating over an existing note is refused', (await fileText('Welcome.md')).includes('MINE'));
+
+// Rename
+await page.getByRole('button', { name: 'Fresh note.md' }).click();
+await page.waitForTimeout(150);
+page.once('dialog', (d) => d.accept('Renamed note.md'));
+await page.getByRole('button', { name: 'Rename' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Renamed note.md');
+const afterRename = await fileList();
+check('rename moves the file', afterRename.includes('Renamed note.md') && !afterRename.includes('Fresh note.md'));
+
+// Delete, declined then accepted.
+page.once('dialog', (d) => d.dismiss());
+await page.getByRole('button', { name: 'Delete' }).click();
+await page.waitForTimeout(150);
+check('declining the delete confirm keeps the file', (await fileList()).includes('Renamed note.md'));
+page.once('dialog', (d) => d.accept());
+await page.getByRole('button', { name: 'Delete' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path') === null);
+check('confirming the delete removes the file', !(await fileList()).includes('Renamed note.md'));
+
+await page.screenshot({ path: `${SP}/smoke-write.png` });
+
 console.log(problems.length ? '\nBrowser problems:\n' + problems.join('\n') : '\nNo console or page errors.');
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
 await browser.close();

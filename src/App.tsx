@@ -3,7 +3,9 @@ import { isDirty, useVault } from './state/vaultStore';
 import { FileTree } from './components/FileTree';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
-import { Workspace, useUnsavedChangesWarning } from './components/Workspace';
+import { Workspace } from './components/Workspace';
+import { ConflictBar } from './components/ConflictBar';
+import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave';
 
 function Splash({
   title,
@@ -32,6 +34,8 @@ export function App() {
   const source = useVault((s) => s.source);
   const loadingFile = useVault((s) => s.loadingFile);
   const dirty = useVault(isDirty);
+  const canWrite = useVault((s) => s.canWrite);
+  const enableWriting = useVault((s) => s.enableWriting);
   const init = useVault((s) => s.init);
   const pick = useVault((s) => s.pick);
   const reopen = useVault((s) => s.reopen);
@@ -41,6 +45,7 @@ export function App() {
   }, [init]);
 
   useUnsavedChangesWarning(dirty);
+  useAutosave();
 
   if (status === 'checking') return <div className="splash" />;
 
@@ -101,6 +106,15 @@ export function App() {
   return (
     <div className="app">
       <Toolbar />
+      {!canWrite && (
+        <div className="notice">
+          <span>This folder is open for reading only, so nothing you type will be saved.</span>
+          <button type="button" className="button" onClick={() => void enableWriting()}>
+            Allow editing
+          </button>
+        </div>
+      )}
+      <ConflictBar />
       <div className="workspace">
         <aside className="sidebar">
           <FileTree />

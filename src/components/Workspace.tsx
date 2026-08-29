@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useVault } from '../state/vaultStore';
 import { useScrollSync } from '../hooks/useScrollSync';
@@ -9,6 +9,7 @@ const MIN_PANE_PERCENT = 20;
 
 export function Workspace({ path, source }: { path: string; source: string }) {
   const draft = useVault((s) => s.draft);
+  const revision = useVault((s) => s.revision);
   const setDraft = useVault((s) => s.setDraft);
   const viewMode = useVault((s) => s.viewMode);
 
@@ -60,7 +61,15 @@ export function Workspace({ path, source }: { path: string; source: string }) {
     <div className="split" ref={splitRef}>
       {showEditor && (
         <div className="pane pane-editor" style={split ? { width: `${editorPercent}%` } : undefined}>
-          <Editor key={path} initialDoc={source} onChange={setDraft} onViewReady={setView} />
+          {/* The revision changes when the buffer is replaced from outside the
+              editor — a revert, or a reload after a conflict — which is the one
+              case where the document has to be pushed in rather than typed. */}
+          <Editor
+            key={`${path}#${revision}`}
+            initialDoc={draft ?? source}
+            onChange={setDraft}
+            onViewReady={setView}
+          />
         </div>
       )}
 
@@ -85,18 +94,4 @@ export function Workspace({ path, source }: { path: string; source: string }) {
       )}
     </div>
   );
-}
-
-/** Warn before a reload throws away edits that have nowhere to go yet. */
-export function useUnsavedChangesWarning(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return;
-    function onBeforeUnload(event: BeforeUnloadEvent) {
-      event.preventDefault();
-      // Chrome requires returnValue to be set; the string itself is never shown.
-      event.returnValue = '';
-    }
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [dirty]);
 }

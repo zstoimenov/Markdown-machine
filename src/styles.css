@@ -15,6 +15,7 @@
   --accent-soft: #e6f0ea;
   --danger: #a8352a;
   --code-bg: #f4f4f2;
+  --warn-soft: #fbf0d9;
 
   --syn-keyword: #8250df;
   --syn-string: #0a6b47;
@@ -43,6 +44,7 @@
     --accent-soft: #23342b;
     --danger: #e2857a;
     --code-bg: #202124;
+    --warn-soft: #3a2f1c;
 
     --syn-keyword: #c297f0;
     --syn-string: #7ec9a4;
@@ -76,8 +78,8 @@ body {
 /* ---------- Shell ---------- */
 
 .app {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
@@ -120,10 +122,13 @@ body {
 .workspace {
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  flex: 1;
   min-height: 0;
 }
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
   overflow-y: auto;
@@ -609,8 +614,82 @@ body.is-dragging {
 .status-save {
   margin-left: auto;
   color: var(--text-faint);
+  white-space: nowrap;
 }
 
 .status-save.is-dirty {
   color: var(--accent);
+}
+
+
+/* ---------- Banners ---------- */
+
+.notice,
+.conflict {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.conflict {
+  background: var(--warn-soft);
+}
+
+.conflict-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.notice .button {
+  margin-left: auto;
+}
+
+/* ---------- Sidebar actions ---------- */
+
+.tree-actions {
+  display: flex;
+  gap: 12px;
+  padding: 2px 12px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.link-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.link-button.is-danger:not(:disabled) {
+  color: var(--danger);
+}
+
+/* ---------- Save state ---------- */
+
+.is-warn {
+  color: var(--danger);
+}
+
+.status-save.is-warn {
+  color: var(--danger);
 }

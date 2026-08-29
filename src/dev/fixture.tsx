@@ -12,7 +12,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '../App';
 import { useVault } from '../state/vaultStore';
-import type { TreeEntry, VaultAdapter } from '../fs/types';
+import {
+  AlreadyExistsError,
+  ConflictError,
+  baseName,
+  parentPath,
+  type TreeEntry,
+  type VaultAdapter,
+} from '../fs/types';
 import '../styles.css';
 
 const WELCOME = `---
@@ -98,35 +105,102 @@ const DOT_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAPElEQVR42u3NMQEAAAgDoJnc6BpjDyR' +
   'gcnfCqkAgEAgEAoFAIBAIBAKBQCAQCAQCgUAgEAgEAoFA8LFgAV+AAAGb0y0kAAAAAElFTkSuQmCC';
 
-const tree: Record<string, TreeEntry[]> = {
-  '': [
-    { name: 'notes', path: 'notes', kind: 'directory' },
-    { name: 'Long.md', path: 'Long.md', kind: 'file' },
-    { name: 'Welcome.md', path: 'Welcome.md', kind: 'file' },
-  ],
-  notes: [{ name: 'Second.md', path: 'notes/Second.md', kind: 'file' }],
-};
+const DIRECTORIES = new Set(['notes']);
 
-const files: Record<string, string> = {
-  'Welcome.md': WELCOME,
-  'Long.md': LONG_NOTE,
-  'notes/Second.md': SECOND,
-};
+const files = new Map<string, { text: string; modifiedAt: number }>([
+  ['Welcome.md', { text: WELCOME, modifiedAt: Date.now() }],
+  ['Long.md', { text: LONG_NOTE, modifiedAt: Date.now() }],
+  ['notes/Second.md', { text: SECOND, modifiedAt: Date.now() }],
+]);
 
+let writable = true;
+
+/**
+ * An in-memory vault with the same contract as the real one, including the
+ * conflict check — the write path is the half of this app that can destroy
+ * something, so the harness has to be able to exercise it.
+ */
 const fakeVault: VaultAdapter = {
   name: 'demo-vault',
+  get writable() {
+    return writable;
+  },
+  async requestWrite() {
+    writable = true;
+    return true;
+  },
   async listDir(path) {
-    return tree[path] ?? [];
+    const entries: TreeEntry[] = [];
+    for (const directory of DIRECTORIES) {
+      if (parentPath(directory) === path) {
+        entries.push({ name: baseName(directory), path: directory, kind: 'directory' });
+      }
+    }
+    for (const file of files.keys()) {
+      if (parentPath(file) === path) {
+        entries.push({ name: baseName(file), path: file, kind: 'file' });
+      }
+    }
+    return entries.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
   },
   async readFile(path) {
-    const contents = files[path];
-    if (contents === undefined) throw new Error('not found');
-    return contents;
+    const file = files.get(path);
+    if (!file) throw new Error('not found');
+    return { text: file.text, modifiedAt: file.modifiedAt };
   },
   async readBinary(path) {
     if (path !== 'assets/dot.png') throw new Error('not found');
     const bytes = Uint8Array.from(atob(DOT_PNG), (c) => c.charCodeAt(0));
     return new Blob([bytes], { type: 'image/png' });
+  },
+  async writeFile(path, contents, expectedModifiedAt) {
+    const file = files.get(path);
+    if (!file) throw new Error('not found');
+    if (expectedModifiedAt !== null && Math.abs(file.modifiedAt - expectedModifiedAt) > 1000) {
+      throw new ConflictError(path);
+    }
+    const modifiedAt = Date.now();
+    files.set(path, { text: contents, modifiedAt });
+    return modifiedAt;
+  },
+  async createFile(path) {
+    if (files.has(path)) throw new AlreadyExistsError(path);
+    files.set(path, { text: '', modifiedAt: Date.now() });
+  },
+  async renameFile(from, to) {
+    if (files.has(to)) throw new AlreadyExistsError(to);
+    const file = files.get(from);
+    if (!file) throw new Error('not found');
+    files.set(to, file);
+    files.delete(from);
+  },
+  async deleteFile(path) {
+    files.delete(path);
+  },
+};
+
+// Lets the smoke test play the part of another program editing the same file.
+declare global {
+  interface Window {
+    mmFixture: {
+      touch(path: string, text: string): void;
+      read(path: string): string | undefined;
+      list(): string[];
+    };
+  }
+}
+window.mmFixture = {
+  touch(path, text) {
+    files.set(path, { text, modifiedAt: Date.now() + 10_000 });
+  },
+  read(path) {
+    return files.get(path)?.text;
+  },
+  list() {
+    return [...files.keys()].sort();
   },
 };
 
@@ -135,7 +209,8 @@ useVault.setState({
   adapter: fakeVault,
   vaultName: 'demo-vault',
   rememberedName: 'demo-vault',
-  children: { '': tree[''] ?? [] },
+  canWrite: true,
+  children: { '': await fakeVault.listDir('') },
   init: async () => {},
 });
 
