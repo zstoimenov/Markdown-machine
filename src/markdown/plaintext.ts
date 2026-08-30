@@ -17,6 +17,16 @@ import { splitFrontmatter } from './frontmatter.ts';
  * LLM agent can both read: bullets, numbering, indentation, blank lines between
  * blocks, and link targets written out because nothing here is clickable.
  *
+ * Two blocks keep their markers, because there the markers are the information
+ * rather than decoration. A fence is the one markdown marker that has become a
+ * plain-text convention in its own right — people type ``` into chat boxes that
+ * have never rendered markdown — and it is the only way to say "this is literal"
+ * that survives a paste target normalising whitespace, which four spaces of
+ * indent do not. A table keeps its pipes for the same reason, since nothing else
+ * in plain text says "table" at all; what it gains is columns padded to line up
+ * and a rule under the header, so a person can scan it and a reader does not have
+ * to guess which row named the columns.
+ *
  * Not used, deliberately: Unicode look-alikes for bold (𝗯𝗼𝗹𝗱). They buy an
  * appearance at the cost of tokenisation, search, copy and screen readers, and
  * do not exist for Cyrillic or CJK at all.
@@ -34,12 +44,22 @@ const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
 const BULLETS = ['• ', '◦ ', '▪ '];
 const RULE = '────────';
-/** Long-standing plain-text convention for "this block is code, not prose". */
-const CODE_INDENT = '    ';
+/**
+ * Past this, padding a column out to the widest cell in it stops aligning
+ * anything and starts pushing the rest of the row off the screen.
+ */
+const MAX_COLUMN = 40;
 
 /* -------------------------------------------------------------------------- */
 /* Inline                                                                     */
 /* -------------------------------------------------------------------------- */
+
+/** Whether writing the target out would only repeat the label. */
+function isBareTarget(label: string, href: string): boolean {
+  if (label === href || `mailto:${label}` === href) return true;
+  const bare = (url: string) => url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/$/, '');
+  return bare(label) === bare(href);
+}
 
 function renderInline(token: Token): string {
   let out = '';
@@ -70,9 +90,11 @@ function renderInline(token: Token): string {
         break;
       case 'link_close': {
         // Nothing is clickable where this is going, so the target is written out
-        // — unless the label already is the target.
+        // — unless the label already is the target. Bare URLs in the prose count
+        // as that: linkify gives them a scheme the author never typed, and
+        // `example.com (https://example.com)` says one thing twice.
         const label = out.slice(labelStart);
-        if (href && href !== label && `mailto:${label}` !== href) out += ` (${href})`;
+        if (href !== null && !isBareTarget(label, href)) out += ` (${href})`;
         href = null;
         break;
       }
@@ -102,6 +124,51 @@ function indentLines(text: string, pad: string): string {
     .join('\n');
 }
 
+/**
+ * A code block, fenced. The fence grows past any run of backticks inside the
+ * code, so a block that itself shows a fence cannot close its own. The language
+ * tag comes along: a reader that knows what to do with it does, and one that
+ * does not reads a word.
+ */
+function fenced(content: string, info: string): string {
+  const body = content.replace(/\n+$/, '');
+  const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map((run) => run[0].length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  const language = info.trim().split(/\s+/)[0] ?? '';
+  return [`${fence}${language}`, body, fence].join('\n');
+}
+
+/**
+ * Rows with their columns padded to line up, and a rule under the header. The
+ * grid is what a table is for, so it is kept rather than flattened — and keeping
+ * it costs nothing in a proportional font, where the alignment is simply not
+ * seen. Every column is at least three wide, which is what makes the result a
+ * markdown table as well as a legible one, so it can be pasted back.
+ */
+function renderTable(rows: string[][], headerRows: number): string {
+  const columns = Math.max(...rows.map((cells) => cells.length));
+  const widths = Array.from({ length: columns }, (_, column) => {
+    const widest = Math.max(...rows.map((cells) => [...(cells[column] ?? '')].length));
+    return Math.max(3, Math.min(MAX_COLUMN, widest));
+  });
+
+  const line = (cells: string[]) =>
+    Array.from({ length: columns }, (_, column) => {
+      const cell = cells[column] ?? '';
+      // A cell wider than its column simply overflows; padding the rest of the
+      // row out to meet it would be worse than the ragged edge.
+      const pad = Math.max(0, (widths[column] ?? 0) - [...cell].length);
+      return cell + ' '.repeat(pad);
+    })
+      .join(' | ')
+      .trimEnd();
+
+  const rule = widths.map((width) => '-'.repeat(width)).join(' | ');
+  const body = rows.map(line);
+  if (headerRows > 0) body.splice(headerRows, 0, rule);
+  return body.join('\n');
+}
+
 export function toPlainText(source: string): PlainTextResult {
   // markdown-it reads a frontmatter fence as two thematic breaks with a
   // paragraph between, so it comes off first and returns as plain key/value
@@ -115,8 +182,9 @@ export function toPlainText(source: string): PlainTextResult {
   const listStarts: number[] = [];
   const quoteStarts: number[] = [];
   let pendingMarker: string | null = null;
+  let inHead = false;
   let row: string[] | null = null;
-  let tableStart = -1;
+  let table: { rows: string[][]; headerRows: number } | null = null;
 
   function push(text: string) {
     if (text === '') return;
@@ -166,7 +234,7 @@ export function toPlainText(source: string): PlainTextResult {
 
       case 'fence':
       case 'code_block':
-        push(indentLines(token.content.replace(/\n+$/, ''), CODE_INDENT));
+        push(fenced(token.content, token.info));
         break;
 
       case 'html_block':
@@ -228,7 +296,7 @@ export function toPlainText(source: string): PlainTextResult {
       }
 
       case 'table_open':
-        tableStart = blocks.length;
+        table = { rows: [], headerRows: 0 };
         break;
 
       case 'tr_open':
@@ -238,22 +306,34 @@ export function toPlainText(source: string): PlainTextResult {
       case 'th_open':
       case 'td_open': {
         const inline = tokens[i + 1];
-        row?.push(inline && inline.type === 'inline' ? renderInline(inline) : '');
+        // A cell is one line: a break inside one would take the row apart.
+        const text = inline && inline.type === 'inline' ? renderInline(inline) : '';
+        row?.push(text.replace(/\s*\n\s*/g, ' '));
         break;
       }
 
       case 'tr_close':
-        if (row && row.length > 0) blocks.push(row.join(' | '));
+        if (table && row && row.length > 0) {
+          table.rows.push(row);
+          // Rows arrive in order and the head comes first, so counting them is
+          // enough to know where the rule goes.
+          if (inHead) table.headerRows += 1;
+        }
         row = null;
         break;
 
-      case 'table_close': {
-        const rows = blocks.splice(tableStart);
-        // A grid cannot survive proportional text; readable rows can.
-        if (rows.length > 0) blocks.push(rows.join('\n'));
-        tableStart = -1;
+      case 'thead_open':
+        inHead = true;
         break;
-      }
+
+      case 'thead_close':
+        inHead = false;
+        break;
+
+      case 'table_close':
+        if (table) push(renderTable(table.rows, table.headerRows));
+        table = null;
+        break;
 
       default:
         break;

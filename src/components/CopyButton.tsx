@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { COPY_VARIANTS, copyNote, type CopyMode } from '../markdown/copy';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
 import { useVault } from '../state/vaultStore';
 
 /**
@@ -26,6 +26,12 @@ export function CopyButton() {
   const closeTimer = useRef(0);
 
   const value = draft ?? source;
+  // Only while the menu is open: stripping the markers to count them is work,
+  // and it is work nobody asked for until they are choosing between the two.
+  const sizes = useMemo(
+    () => (open && value !== null ? copySizes(value) : null),
+    [open, value],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -93,7 +99,8 @@ export function CopyButton() {
           ) : (
             COPY_VARIANTS.map(({ mode, label }) => (
               <button key={mode} type="button" role="menuitem" onClick={() => void copy(mode)}>
-                {label}
+                <span>{label}</span>
+                <small>{sizes ? `${sizes[mode].toLocaleString()} symbols` : ''}</small>
               </button>
             ))
           )}

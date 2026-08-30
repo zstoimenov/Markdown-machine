@@ -55,8 +55,12 @@ describe('toPlainText — structure stays', () => {
     assert.equal(out('<https://example.com>\n'), 'https://example.com\n');
   });
 
-  it('indents a code block instead of fencing it', () => {
-    assert.equal(out('```js\nconst a = 1;\n```\n'), '    const a = 1;\n');
+  it('keeps the fence, which is the one marker plain text kept too', () => {
+    assert.equal(out('```js\nconst a = 1;\n```\n'), '```js\nconst a = 1;\n```\n');
+  });
+
+  it('grows the fence past a fence inside the code', () => {
+    assert.match(out('````\n```\ninner\n```\n````\n'), /^````\n```\ninner\n```\n````\n$/);
   });
 
   it('keeps blockquote prefixes, which every mail client already uses', () => {
@@ -67,8 +71,20 @@ describe('toPlainText — structure stays', () => {
     assert.match(out('a\n\n---\n\nb\n'), /\n────────\n/);
   });
 
-  it('flattens a table into readable rows', () => {
-    assert.equal(out('| A | B |\n| --- | --- |\n| 1 | 2 |\n'), 'A | B\n1 | 2\n');
+  it('lines a table up and rules off its header', () => {
+    assert.equal(
+      out('| Name | Age |\n| --- | --- |\n| Ada | 36 |\n'),
+      'Name | Age\n---- | ---\nAda  | 36\n',
+    );
+  });
+
+  it('leaves a cell wider than its column ragged rather than pushing the row out', () => {
+    const wide = 'x'.repeat(60);
+    assert.match(out(`| a | b |\n| --- | --- |\n| ${wide} | c |\n`), new RegExp(`${wide} \\| c`));
+  });
+
+  it('does not write a bare URL out twice', () => {
+    assert.equal(out('Go to example.com now.\n'), 'Go to example.com now.\n');
   });
 
   it('keeps an image reachable by name and source', () => {
