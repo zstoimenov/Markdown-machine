@@ -300,6 +300,15 @@ The export is **not idempotent, by design.** `• one` is a paragraph to a markd
 a second pass would flatten the indent that marks nesting. Stripping markup is lossy, and a
 test pins that rather than pretending the output round-trips.
 
+**Code and tables keep their markers**, which is the one place the rule bends, and it bends
+because there the marker is the information. Four spaces of indent is the conventional
+plain-text way to say "code" and also the first thing a paste target normalises away, so
+neither reader reliably got the signal; a fence survives it, and is the strongest signal
+there is to a reader that parses. A table without a rule row leaves the header to be guessed
+at and without padding leaves a person unable to scan it. Both now come out as valid markdown,
+which is a side effect rather than the aim — but it does mean the export round-trips through
+`toMarkdown` for exactly those two blocks.
+
 ### Phone layout
 
 The file tree becomes a drawer, the split view collapses to a single pane, touch targets
@@ -452,6 +461,10 @@ them re-render to get out of the way.
   shouting. Use *Markdown source* where the note itself is what is wanted.
 - **Heading levels do not survive the plain-text export.** Every heading uppercases, so a
   three-level document reads as a flat one.
+- **A table costs about 30 characters to export.** The rule row and the padding are what make
+  it scannable and unambiguous, and they are not free where a paste box counts. The copy menu
+  shows the figure for each form before one is chosen, which is as far as this goes without
+  making it an option.
 
 ## 11. Risks and how they're handled
 

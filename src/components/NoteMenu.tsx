@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { COPY_VARIANTS, copyNote, type CopyMode } from '../markdown/copy';
+import { useEffect, useMemo, useState } from 'react';
+import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
 import { looksLikeMarkdown } from '../markdown/fromPlainText';
 import { canRevert, useVault } from '../state/vaultStore';
 
@@ -36,6 +36,8 @@ export function NoteMenu() {
   const close = useVault((s) => s.close);
 
   const value = draft ?? source;
+  // Costed only while the sheet is open — see CopyButton for why.
+  const sizes = useMemo(() => (open && value !== null ? copySizes(value) : null), [open, value]);
 
   // A different note means a confirmation still on screen is about the old one.
   useEffect(() => {
@@ -102,7 +104,10 @@ export function NoteMenu() {
                     onClick={() => void copy(copyMode)}
                   >
                     <span>Copy {label.toLowerCase()}</span>
-                    <small>{hint}</small>
+                    <small>
+                      {sizes ? `${sizes[copyMode].toLocaleString()} symbols · ` : ''}
+                      {hint}
+                    </small>
                   </button>
                 ))}
                 <button

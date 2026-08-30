@@ -1024,7 +1024,8 @@ kbd {
 }
 
 .copy-menu button {
-  display: block;
+  display: flex;
+  align-items: baseline;
   width: 100%;
   padding: 9px 10px;
   font-size: 13px;
@@ -1035,6 +1036,19 @@ kbd {
   text-align: left;
   color: var(--text);
   cursor: pointer;
+}
+
+.copy-menu button span {
+  flex: 1;
+}
+
+/* The cost of each form, for a box with a limit on it. */
+.copy-menu button small {
+  flex: none;
+  margin-left: 14px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .copy-menu button:hover {

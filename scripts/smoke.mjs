@@ -361,7 +361,7 @@ await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 await page.getByRole('button', { name: 'Copy', exact: true }).click();
 await page.waitForSelector('.copy-menu');
 check('the copy menu offers exactly two options', (await page.locator('.copy-menu button').count()) === 2);
-check('and nothing but their names', (await page.locator('.copy-menu').innerText()).trim() === 'Markdown source\nText for pasting');
+check('and what each one would cost, before choosing', /Markdown source[\s\S]*\d+ symbols[\s\S]*Text for pasting[\s\S]*\d+ symbols/.test(await page.locator('.copy-menu').innerText()), await page.locator('.copy-menu').innerText());
 await page.screenshot({ path: `${SP}/smoke-copy.png` });
 
 await page.getByRole('menuitem', { name: 'Text for pasting' }).click();
@@ -394,8 +394,8 @@ check('bullets become bullet characters', plain.includes('• one'));
 check('nesting reads as nesting', plain.includes('  ◦ nested'));
 check('numbering survives', plain.includes('1. first'));
 check('quotes keep their prefix', plain.includes('> quoted'));
-check('code is indented rather than fenced', plain.includes('    const a = 1;') && !plain.includes('```'));
-check('tables flatten to readable rows', plain.includes('A | B') && plain.includes('1 | 2'));
+check('code keeps its fence and its language', plain.includes('```js\nconst a = 1;\n```'), plain);
+check('tables line up and rule off their header', plain.includes('A   | B\n--- | ---\n1   | 2'), plain);
 check('link targets are written out', plain.includes('docs (https://example.com)'));
 
 // Markdown source is the buffer verbatim, markers and all.

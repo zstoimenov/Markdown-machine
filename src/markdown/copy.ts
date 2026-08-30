@@ -43,6 +43,14 @@ export async function writeClipboard(text: string): Promise<boolean> {
   }
 }
 
+/**
+ * What each form would cost, before anyone commits to one. Paste targets have
+ * hard limits, and finding out afterwards is finding out too late.
+ */
+export function copySizes(value: string): Record<CopyMode, number> {
+  return { source: countSymbols(value.trimEnd()), text: toPlainText(value).symbols };
+}
+
 /** Copies, and returns what to say about it. */
 export async function copyNote(mode: CopyMode, value: string): Promise<string> {
   const result =

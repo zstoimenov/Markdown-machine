@@ -93,14 +93,42 @@ The rule the plain form follows is *markup goes, words stay*:
 | `- item`, nested | `• item`, `◦ item`, indented |
 | `1. item` | `1. item` |
 | `> quote` | `> quote` |
-| ```` ```code``` ```` | indented four spaces |
+| ```` ```code``` ```` | a fence, language tag and all |
 | `[label](url)` | `label (url)` |
-| a table | rows as `cell \| cell` |
+| a table | columns lined up, with a rule under the header |
 | `---` | `────────` |
 
 Headings are the one place words are altered: plain text has no other way to mark one, and
 capitals work in every script — including Cyrillic, where Unicode has no bold form at all.
 The level distinction is lost, which is the price of not inventing punctuation for it.
+
+Code and tables are the one place markers *stay*, because there the marker is the information
+rather than decoration:
+
+````
+```js
+const greet = (name) => `hello ${name}`;
+```
+
+Environment | Branch  | Status
+----------- | ------- | ------
+production  | main    | live
+staging     | develop | live
+````
+
+A fence is the one markdown marker that became a plain-text convention in its own right —
+people type ``` into boxes that have never rendered markdown — and it is the only way to say
+*this is literal* that survives a paste target normalising whitespace, which four spaces of
+indent do not. A table keeps its pipes because nothing else in plain text says "table" at
+all; what it gains is columns padded to line up and a rule under the header, so a person can
+scan it and a reader does not have to guess which row named the columns. Columns wider than
+40 characters are left ragged rather than pushing the rest of the row off the screen.
+
+**On length**, since paste boxes have limits: fencing is *cheaper* than indenting from about
+three lines of code on — a fence costs a fixed eight characters or so, four spaces of indent
+cost four per line. A table costs more: its rule row plus the padding, which came to about 27
+characters on a small three-column table. A note with no code and no tables is unchanged to
+the character. The copy menu shows what each form would cost before you pick one.
 
 Not used, deliberately: Unicode look-alikes for bold (𝗯𝗼𝗹𝗱). They buy an appearance at the
 cost of tokenisation, search, copy and screen readers, and do not exist for Cyrillic or CJK.
