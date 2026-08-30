@@ -8,8 +8,10 @@ import { ConflictBar } from './components/ConflictBar';
 import { RepairBar } from './components/RepairBar';
 import { EmptyState } from './components/EmptyState';
 import { FilePicker } from './components/FilePicker';
+import { FallbackNotice } from './components/FallbackNotice';
 import { useIsNarrow } from './hooks/useMediaQuery';
 import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave';
+import { useKeyboardInsets } from './hooks/useViewport';
 
 function Splash({
   title,
@@ -54,6 +56,9 @@ export function App() {
 
   useUnsavedChangesWarning(dirty);
   useAutosave();
+  // Keeps the app inside what the software keyboard leaves of the screen, so
+  // the suggestion row lands on top of the keys rather than under them.
+  useKeyboardInsets();
 
   if (status === 'checking') return <div className="splash" />;
 
@@ -125,14 +130,7 @@ export function App() {
           </button>
         </div>
       )}
-      {mode === 'single-file' && (
-        <div className="notice">
-          <span>
-            One file, opened read-only — this browser cannot write back to the original.
-            Your edits live here until you download a copy.
-          </span>
-        </div>
-      )}
+      {mode === 'single-file' && <FallbackNotice />}
       <ConflictBar />
       <RepairBar />
       <div className="workspace">

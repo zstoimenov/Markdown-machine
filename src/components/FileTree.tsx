@@ -1,4 +1,5 @@
 import { useVault } from '../state/vaultStore';
+import { useIsNarrow } from '../hooks/useMediaQuery';
 import { looksLikeMarkdown } from '../markdown/fromPlainText';
 import type { TreeEntry } from '../fs/types';
 
@@ -74,6 +75,10 @@ export function FileTree() {
   const source = useVault((s) => s.source);
   const converted = useVault((s) => s.converted);
   const convertActive = useVault((s) => s.convertActive);
+  // On a phone the drawer is for choosing a note. What you then do to that note
+  // lives in the toolbar's menu, where a thumb can reach it and the targets are
+  // a finger wide rather than a link in a row of links.
+  const narrow = useIsNarrow();
 
   if (!roots) return null;
 
@@ -81,47 +86,53 @@ export function FileTree() {
 
   return (
     <>
-      <div className="tree-actions">
-        <button
-          type="button"
-          className="link-button"
-          disabled={activePath === null}
-          title="Rewrite this note's markdown, fixing JSON artefacts and escaped line breaks"
-          onClick={repairActive}
-        >
-          Fix markdown
-        </button>
-        <button
-          type="button"
-          className="link-button"
-          disabled={activePath === null || converted || !plain}
-          title="Read this note as plain text and put the markdown syntax back into it"
-          onClick={convertActive}
-        >
-          Plain → markdown
-        </button>
-      </div>
+      {!narrow && (
+        <div className="tree-actions">
+          <button
+            type="button"
+            className="link-button"
+            disabled={activePath === null}
+            title="Rewrite this note's markdown, fixing JSON artefacts and escaped line breaks"
+            onClick={repairActive}
+          >
+            Fix markdown
+          </button>
+          <button
+            type="button"
+            className="link-button"
+            disabled={activePath === null || converted || !plain}
+            title="Read this note as plain text and put the markdown syntax back into it"
+            onClick={convertActive}
+          >
+            Plain → markdown
+          </button>
+        </div>
+      )}
       {canWrite && (
         <div className="tree-actions">
           <button type="button" className="link-button" onClick={() => void createNote()}>
             New note
           </button>
-          <button
-            type="button"
-            className="link-button"
-            disabled={activePath === null}
-            onClick={() => void renameActive()}
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            className="link-button is-danger"
-            disabled={activePath === null}
-            onClick={() => void deleteActive()}
-          >
-            Delete
-          </button>
+          {!narrow && (
+            <>
+              <button
+                type="button"
+                className="link-button"
+                disabled={activePath === null}
+                onClick={() => void renameActive()}
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                className="link-button is-danger"
+                disabled={activePath === null}
+                onClick={() => void deleteActive()}
+              >
+                Delete
+              </button>
+            </>
+          )}
         </div>
       )}
       <nav className="tree" aria-label="Notes">

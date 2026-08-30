@@ -66,8 +66,10 @@ body,
 }
 
 #root {
-  /* The address bar shrinking must not leave the status bar off-screen. */
-  height: 100dvh;
+  /* `100dvh` is the floor: it survives the address bar shrinking. A software
+     keyboard does not move it, so `--app-height` takes over when one is up —
+     see hooks/useViewport.ts. */
+  height: var(--app-height, 100dvh);
 }
 
 body {
@@ -86,6 +88,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Chromium keeps the layout viewport still and publishes the keyboard's height
+     here instead; the app gives up that much of its bottom. Zero everywhere else,
+     where `--app-height` above has already done the same job. */
+  padding-bottom: env(keyboard-inset-height, 0px);
 }
 
 .toolbar {
@@ -885,17 +891,24 @@ kbd {
     padding: 0 8px;
   }
 
-  /* The wordmark is the first thing to go; the folder name is the useful one. */
+  /* The wordmark is the first thing to go; which note this is, is the useful one
+     — and it takes whatever the buttons either side of it do not need. */
   .brand {
     display: none;
   }
 
+  /* Not a chip any more — it is the title of the page you are on, so it reads
+     as one and takes the room the buttons leave. */
   .vault-name {
-    max-width: 10ch;
-  }
-
-  .toolbar-actions .button-quiet {
-    display: none;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
   }
 
   /* Comfortable thumb targets, and no iOS zoom-on-focus at 16px. */
@@ -977,10 +990,6 @@ kbd {
 
 /* Narrower still: drop what is merely nice to know. */
 @media (max-width: 420px) {
-  .vault-name {
-    display: none;
-  }
-
   .status-path {
     max-width: 14ch;
   }
@@ -1121,4 +1130,149 @@ kbd {
   flex: none;
   border-top: 1px solid var(--border);
   border-bottom: 0;
+}
+
+
+/* ---------- The phone, while writing ---------- */
+
+/* A keyboard leaves about a third of the screen. What earns a place in it is the
+   words and the row that helps write them; the status bar comes back the moment
+   the keyboard goes. The save state is the one thing from it worth knowing
+   mid-sentence, so it moves to the toolbar as a dot. */
+body.is-keyboard .status {
+  display: none;
+}
+
+/* Standing explanations go with it. Anything urgent — a conflict, or the offer
+   to convert what was just pasted — is not one of these and stays. */
+body.is-keyboard .app > .notice {
+  display: none;
+}
+
+.save-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.save-dot.is-warn {
+  background: var(--danger);
+}
+
+/* ---------- Bottom sheet ---------- */
+
+/* Up from the bottom, not down from the corner: the top-right of a phone is the
+   one place a thumb holding it cannot reach. */
+.sheet {
+  position: fixed;
+  z-index: 21;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 78%;
+  overflow-y: auto;
+  padding: 6px 0 calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  background: var(--bg-raised);
+  box-shadow: 0 -8px 32px rgb(0 0 0 / 22%);
+  animation: sheet-in 0.16s ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+.sheet-group {
+  padding: 4px 0 8px;
+}
+
+.sheet-group + .sheet-group {
+  border-top: 1px solid var(--border);
+}
+
+.sheet-group h2 {
+  margin: 8px 0 2px;
+  padding: 0 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.sheet-group button {
+  display: block;
+  width: 100%;
+  padding: 11px 18px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.sheet-group button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.sheet-group button.is-danger:not(:disabled) span {
+  color: var(--danger);
+}
+
+.sheet-group button:active:not(:disabled) {
+  background: var(--bg-panel);
+}
+
+.sheet-group button span {
+  display: block;
+  font-size: 15px;
+}
+
+.sheet-group button small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sheet-group button:disabled small {
+  color: var(--text-faint);
+}
+
+.notice-dismiss {
+  flex: none;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sheet-message {
+  margin: 4px 0 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
 }

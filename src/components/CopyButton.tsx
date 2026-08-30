@@ -1,42 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { toPlainText } from '../markdown/plaintext';
-import { countSymbols } from '../markdown/counts';
+import { COPY_VARIANTS, copyNote, type CopyMode } from '../markdown/copy';
 import { useVault } from '../state/vaultStore';
-
-/**
- * Clipboard access is a permission in some contexts and simply absent in older
- * ones, so the modern call falls back to the selection trick rather than
- * failing silently in someone's hand.
- */
-async function writeClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.setAttribute('readonly', '');
-      area.style.position = 'fixed';
-      area.style.top = '0';
-      area.style.opacity = '0';
-      document.body.append(area);
-      area.select();
-      const copied = document.execCommand('copy');
-      area.remove();
-      return copied;
-    } catch {
-      return false;
-    }
-  }
-}
-
-type CopyMode = 'source' | 'text';
-
-const VARIANTS: Array<{ mode: CopyMode; label: string }> = [
-  { mode: 'source', label: 'Markdown source' },
-  { mode: 'text', label: 'Text for pasting' },
-];
 
 /**
  * Copies the open note either exactly as written, markers and all, or as plain
@@ -47,6 +11,9 @@ const VARIANTS: Array<{ mode: CopyMode; label: string }> = [
  * numbering, indentation, blank lines, URLs written out. Unicode look-alikes
  * for bold are not used; they buy an appearance at the cost of tokenisation,
  * search and screen readers, and do not exist for Cyrillic at all.
+ *
+ * This is the desktop affordance. On a phone the same two forms are reached
+ * through the note menu, where everything else occasional lives.
  */
 export function CopyButton() {
   const draft = useVault((s) => s.draft);
@@ -88,19 +55,7 @@ export function CopyButton() {
 
   async function copy(mode: CopyMode) {
     if (value === null) return;
-
-    const result =
-      mode === 'source'
-        ? { text: value, symbols: countSymbols(value.trimEnd()) }
-        : toPlainText(value);
-
-    const copied = await writeClipboard(result.text);
-
-    setMessage(
-      copied
-        ? `Copied ${result.symbols.toLocaleString()} symbols`
-        : 'Could not reach the clipboard',
-    );
+    setMessage(await copyNote(mode, value));
 
     window.clearTimeout(closeTimer.current);
     closeTimer.current = window.setTimeout(() => {
@@ -136,7 +91,7 @@ export function CopyButton() {
           {message ? (
             <p className="copy-message">{message}</p>
           ) : (
-            VARIANTS.map(({ mode, label }) => (
+            COPY_VARIANTS.map(({ mode, label }) => (
               <button key={mode} type="button" role="menuitem" onClick={() => void copy(mode)}>
                 {label}
               </button>

@@ -2,8 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Markdown Machine</title>
+    <meta
+      name="description"
+      content="Write and read the markdown files in a folder on your disk. Nothing is uploaded."
+    />
+
+    <!-- The tab and home-screen mark: a hash across the seam of a split pane. -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- One theme colour per scheme, so the phone's chrome matches the toolbar
+         under it rather than the manifest's single guess. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f2" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e1f22" />
+    <meta name="apple-mobile-web-app-title" content="Markdown" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
     <div id="root"></div>
