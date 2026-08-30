@@ -45,13 +45,13 @@ directly in your browser through the File System Access API — nothing is uploa
 is no server to upload to. The folder you pick is remembered per origin, so the hosted app
 and a local `npm run dev` keep separate ones.
 
-**Being asked for the folder on every load is avoidable.** When the app asks again, Chrome
-offers *Allow this time* and **Allow on every visit** — the second one is the end of it. The
-folder is remembered from then on, the app opens straight into it with no prompt and no click,
-and files and folders opened afterwards are persistent too. Installing the app weighs in
-favour of Chrome keeping that permission, which is the other reason to install it. The handle
-itself is kept in IndexedDB and the app asks for persistent storage when you pick a folder,
-so it is not the first thing thrown away when the disk gets tight.
+**Being asked for the folder again may be avoidable, depending on your browser.** Where the
+prompt offers **Allow on every visit** — desktop Chrome since 122 — that is the end of it: the
+folder is remembered, the app opens straight into it with no prompt and no click, and files
+and folders opened afterwards are persistent too. Where it instead says *until you close all
+tabs*, the grant lasts only as long as the app stays open, and nothing the page can do changes
+that. Either way the handle is kept in IndexedDB and the app asks for persistent storage when
+you pick a folder, so the folder itself is not forgotten when the disk gets tight.
 
 ## Installing it
 
@@ -256,17 +256,22 @@ you to break by hand. Guessing would be worse.
 **Desktop:** a Chromium browser — Chrome, Edge, Brave, Arc or Opera. Folder access uses the
 File System Access API, which Firefox and Safari have not shipped.
 
-**Phones and tablets, including Android Chrome:** the File System Access API is desktop-only,
-so there is no folder mode on mobile at all. What you get instead is the single-file
-fallback: open one `.md` file, read it, edit it, save a copy out. It cannot save in place,
-because the browser gives no handle to write back through — and it never will on iOS, where
-Safari implements only the sandboxed Origin Private File System and every browser is Safari
-underneath.
+**Phones and tablets:** folder mode is available where the browser has the API — which now
+includes some Android Chrome builds, though write access there may last only as long as the
+app stays open. **iOS never will:** Safari implements only the sandboxed Origin Private File
+System, and every browser on iOS is Safari underneath.
 
-Saving out goes through the platform's share sheet where there is one, rather than dropping a
-file into Downloads: on iOS the sheet's *Save to Files* can put the note back in the folder it
-came from, which is as close to saving in place as that platform allows. Elsewhere it stays a
-download.
+Where there is no folder, notes are kept **in the browser, on the device** instead. Add the
+files you want to work on and they stay: writable, more than one, and still there after a
+reload — which the read-only single file this replaced was not. Saving a copy out is how a
+note goes back to a real folder, and it goes through the platform's share sheet where there is
+one: on iOS the sheet's *Save to Files* can put it back where it came from, which is as close
+to saving in place as that platform allows. Elsewhere it stays a download.
+
+Browser storage is not a disk, and the app says so rather than implying otherwise. Safari
+clears script-writable storage after a week without a visit unless the app is on the home
+screen; the app asks for persistent storage, and asks you to keep copies of anything that
+matters.
 
 The layout is rebuilt at phone widths rather than squeezed. A phone has room for about
 three things in a toolbar and, while you are writing, for one — the words — so:

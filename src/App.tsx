@@ -64,15 +64,21 @@ export function App() {
 
   if (status === 'unsupported') {
     return (
-      <Splash title="This browser can’t open folders" action={<FilePicker />}>
+      <Splash title="No folders in this browser" action={<FilePicker />}>
         <p>
-          Markdown Machine reads and writes the actual files in a folder on your disk, which
-          needs the File System Access API. Today that means Chrome, Edge, Brave, Arc or
-          Opera on the desktop — Firefox and Safari have not shipped it.
+          Reading and writing the actual files in a folder needs the File System Access API.
+          Today that means Chrome, Edge, Brave, Arc or Opera on the desktop — Firefox and
+          Safari have not shipped it, and every browser on iOS is Safari underneath.
+        </p>
+        <p>
+          So here, notes are kept <strong>in this browser, on this device</strong>. Add the
+          files you want to work on and they stay: writable, more than one, still here after a
+          reload. Saving a copy out is how one goes back to a real folder.
         </p>
         <p className="muted">
-          You can still open one file at a time here. It opens read-only, because this browser
-          gives no way to write back to the original — edit it and save a copy out.
+          Browser storage is not a disk. Safari clears it after a week without a visit unless
+          the app is on your home screen, so put it there and keep copies of anything that
+          matters.
         </p>
       </Splash>
     );
@@ -112,13 +118,15 @@ export function App() {
         }
       >
         <p>
-          Chrome will ask once more. Choose <strong>Allow on every visit</strong> and it stops
-          asking — the folder is remembered from then on and your notes open straight away.
-          <em>Allow this time</em> works too, and brings you back here on the next load.
+          One tap and your notes are back. If the prompt offers{' '}
+          <strong>Allow on every visit</strong>, take it — that ends the asking for good, and
+          the folder opens straight away from then on.
         </p>
         <p className="muted">
-          Installing the app — the ⊕ in the address bar — weighs in favour of Chrome keeping
-          that permission.
+          Not every version offers it. Where the prompt says <em>until you close all tabs</em>,
+          the permission lasts only while the app stays open, and there is no way around that
+          from in here — it is what the browser charges for keeping your notes in a folder on
+          your disk rather than inside itself.
         </p>
       </Splash>
     );
@@ -135,7 +143,7 @@ export function App() {
           </button>
         </div>
       )}
-      {mode === 'single-file' && <FallbackNotice />}
+      {mode === 'device' && <FallbackNotice />}
       <ConflictBar />
       <RepairBar />
       <div className="workspace">

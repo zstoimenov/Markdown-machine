@@ -87,7 +87,7 @@ export function Toolbar() {
         ) : (
           <>
             <CopyButton />
-            {mode === 'single-file' && activePath !== null && (
+            {mode === 'device' && activePath !== null && (
               <button
                 type="button"
                 className="button button-primary"

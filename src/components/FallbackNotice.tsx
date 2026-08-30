@@ -1,36 +1,48 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { storageIsPersisted } from '../fs/persist';
 import { useIsNarrow } from '../hooks/useMediaQuery';
 
 /**
- * Why a note opened this way cannot be saved.
+ * What "on this device" actually means.
  *
- * It is read once and understood, so it does not deserve three permanent lines
- * at the top of a phone — the short form says the same thing, and it can be put
- * away. On a desktop, where the room is not contested, it stays as it was.
+ * The temptation is to say "your notes are safe here" and stop. They are safer
+ * than they were — a reload no longer takes them — but Safari clears
+ * script-writable storage after seven days without a visit, and a browser under
+ * storage pressure may clear it sooner. Both have an answer, and neither answer
+ * is the app's to apply on someone's behalf: add it to the home screen, which
+ * exempts it from that clock, and save anything that matters out to a real file.
+ *
+ * So the notice says the true thing, and stops being alarming once the browser
+ * has promised to keep the storage.
  */
 export function FallbackNotice() {
   const narrow = useIsNarrow();
   const [dismissed, setDismissed] = useState(false);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
 
-  if (narrow && dismissed) return null;
+  useEffect(() => {
+    void storageIsPersisted().then(setPersisted);
+  }, []);
+
+  if (dismissed || persisted === null) return null;
 
   return (
     <div className="notice">
       <span>
-        {narrow
-          ? 'Read-only — save a copy to keep your changes.'
-          : 'One file, opened read-only — this browser cannot write back to the original. Your edits live here until you save a copy out.'}
+        {persisted
+          ? 'These notes live in this browser rather than in a folder. Save a copy out for anything you want to keep elsewhere.'
+          : narrow
+            ? 'Kept in this browser. Add the app to your home screen so it is not cleared, and save copies out.'
+            : 'These notes live in this browser rather than in a folder, and a browser may clear that — Safari does so after a week without a visit. Adding the app to your home screen exempts it; saving a copy out is the other answer.'}
       </span>
-      {narrow && (
-        <button
-          type="button"
-          className="notice-dismiss"
-          aria-label="Dismiss"
-          onClick={() => setDismissed(true)}
-        >
-          ×
-        </button>
-      )}
+      <button
+        type="button"
+        className="notice-dismiss"
+        aria-label="Dismiss"
+        onClick={() => setDismissed(true)}
+      >
+        ×
+      </button>
     </div>
   );
 }
