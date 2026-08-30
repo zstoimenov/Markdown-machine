@@ -130,10 +130,27 @@ const BROKEN = JSON.stringify({
   ],
 });
 
+// A note that is plain text through and through: shouted heading, drawn bullets,
+// a divider, a labelled URL and an indented block. Nothing in it is markdown.
+const PLAIN = `PROJECT NOTES
+
+• first thing
+   ◦ a detail under it
+• second thing
+
+────────
+
+See the handbook (https://example.com) before starting.
+
+    npm install
+    npm run dev
+`;
+
 const files = new Map<string, { text: string; modifiedAt: number }>([
   ['Broken.md', { text: BROKEN, modifiedAt: Date.now() }],
   ['Welcome.md', { text: WELCOME, modifiedAt: Date.now() }],
   ['Format.md', { text: FORMAT, modifiedAt: Date.now() }],
+  ['Plain.md', { text: PLAIN, modifiedAt: Date.now() }],
   ['Long.md', { text: LONG_NOTE, modifiedAt: Date.now() }],
   ['notes/Second.md', { text: SECOND, modifiedAt: Date.now() }],
 ]);

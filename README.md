@@ -79,8 +79,89 @@ cost of tokenisation, search, copy and screen readers, and do not exist for Cyri
 This text is read as often by an LLM agent as by a person, and both read ordinary characters
 doing the structural work far better than they read counterfeit glyphs.
 
-Stripping markup is deliberately lossy, so the plain form is an export, not a round trip —
-paste it where it is going rather than back into a note.
+Stripping markup is deliberately lossy, so the plain form is an export rather than a round
+trip. Pasting it back into a note is not a disaster, though: the paste is offered a
+conversion, which puts the structure back and cannot put the emphasis back. See the next
+section.
+
+## Turning plain text into markdown
+
+The other direction from the plain-text export, and the rule read backwards:
+*punctuation comes back, words stay*. Nothing is reworded, nothing is reordered, nothing is
+dropped — the only thing added is the markup that plain text had no way to carry.
+
+It is offered three ways:
+
+- **Paste plain text into a note** and a bar appears saying what a conversion would do. The
+  paste itself is never touched on the way in; the offer goes as soon as you type anything
+  else, and `Ctrl`/`Cmd`+`Z` undoes a conversion in one go.
+- **Select a few lines** and the suggestion row offers **→ Markdown** for just that selection.
+- **Plain → markdown** in the sidebar does the whole note. It is greyed out for a note that
+  is already written as markdown.
+
+What it recovers is what plain text actually encodes:
+
+| In the pasted text | In the note |
+|---|---|
+| `SHOUTED LINE` | `# SHOUTED LINE`, at level 1 opening the note and 2 after that |
+| a line over `=====` or `-----` | `#` or `##` |
+| `• item`, `◦ item`, indented | `- item`, nested by indentation |
+| `1. item`, `1) item` | `1. item`, keeping the numbers |
+| `[ ] milk`, `☑ done` | `- [ ] milk`, `- [x] done` |
+| `> quote` | `> quote` |
+| four spaces of indent | a fenced code block |
+| `a \| b` rows | a table, header rule and all |
+| `label (https://…)` | `[label](https://…)` |
+| `────────` | `---` |
+| a paragraph hard-wrapped at a fixed column | one paragraph |
+
+What plain text does **not** encode is not guessed at. Which words were bold, what level a
+heading was, where a sentence was emphasised — inventing those would be writing, and this
+only punctuates. Heading case is left exactly as it stands, too: sentence-casing `API KEYS`
+back would read better and would also turn API into Api.
+
+Two heuristics are worth knowing about, since both can be wrong:
+
+- **The label of a link** is guessed as everything back to the last sentence end, capped at
+  60 characters. `That is done. The handbook (https://example.com) says so.` links *The
+  handbook*; a longer run keeps its brackets instead.
+- **Hard-wrapped paragraphs are joined** only where the block is evidently wrapped — every
+  line but the last inside a narrow band of widths, most of them stopping mid-sentence. A
+  poem, an address or a list of names is left alone.
+
+The conversion rewrites the **editor buffer, not the file**, and always says what it would do
+before it does it. A note that is already markdown comes out untouched: if there is no change
+worth naming, there is no edit at all.
+
+## Suggestions as you type
+
+Under the editor is a row of the markdown that could sensibly come next. The shortcuts above
+cover the markers a touch typist has in their fingers; this is for the rest of it.
+
+It closes things first, because an unclosed marker is the one mistake that changes how
+everything after it renders. Type `**very` and the first chip is `**`. Type `[the docs` and
+it is `](url)`, cursor landing inside the brackets. Open a fence and the only suggestion is
+the fence that closes it.
+
+Otherwise it offers what fits where the cursor is:
+
+| Where the cursor is | What is offered |
+|---|---|
+| An empty line | heading, list, numbered, quote, code block, table |
+| An empty line under a list | the next item, with that list's marker and indent |
+| A list item | the next item, one a level in, and a checkbox |
+| A heading | one level deeper, one shallower |
+| A table row | another cell, and the `\|---\|` rule that makes a header |
+| Ordinary prose | the inline markers, and turning the line into a heading or an item |
+| A selection of several plain-text lines | **→ Markdown** |
+| Inside code | nothing — no markdown applies in there |
+
+The code and table chips write both halves at once, since the closing fence and the header
+rule are the parts that get forgotten. Nothing fires on its own: the document only changes
+when a chip is pressed, and each press is one transaction, so one undo takes it back.
+
+The row is also how markdown is reachable on a phone, where there is no `Mod` key and `|` is
+three taps into the keyboard. `×` hides it for the session.
 
 ## Repairing damaged markdown
 

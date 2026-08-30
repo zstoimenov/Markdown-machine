@@ -406,6 +406,105 @@ const rawClip = await page.evaluate(() => navigator.clipboard.readText());
 check('markdown source is copied byte for byte', rawClip === (await page.evaluate(() => window.mmFixture.read('Format.md'))), rawClip.slice(0, 30));
 check('so it still carries the markers', rawClip.includes('**Bold**') && rawClip.includes('```js'));
 
+// ---------- Plain text to markdown ----------
+await page.getByRole('button', { name: 'Plain.md' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Plain.md');
+check('a plain-text note is offered the conversion', await page.getByRole('button', { name: 'Plain → markdown' }).isEnabled());
+
+await page.getByRole('button', { name: 'Plain → markdown' }).click();
+await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'PROJECT NOTES');
+const converted = await page.locator('.cm-content').innerText();
+check('the shouted line became a heading', converted.includes('# PROJECT NOTES'));
+check('the drawn bullets became a list, nested', converted.includes('- first thing') && converted.includes('  - a detail under it'));
+check('the divider became a rule', converted.includes('---'));
+check('the labelled URL became a link', converted.includes('[See the handbook](https://example.com)'));
+check('the indented block was fenced', converted.includes('```'));
+check('the preview agrees', (await page.locator('.prose ul li').count()) >= 2);
+await page.screenshot({ path: `${SP}/smoke-converted.png` });
+
+// One undo takes the whole conversion back, which is what makes it safe to offer.
+await page.locator('.cm-content').click();
+await page.keyboard.press('Control+z');
+await page.waitForFunction(() => !document.querySelector('.cm-content')?.textContent?.includes('# PROJECT NOTES'));
+check('one undo takes the whole conversion back', (await page.locator('.cm-content').innerText()).includes('• first thing'));
+check('the offer is not made twice', !(await page.getByRole('button', { name: 'Plain → markdown' }).isEnabled()));
+// Let autosave settle, or leaving the note raises the unsaved-changes confirm.
+await waitForSaved();
+
+// ---------- Suggestions ----------
+await page.getByRole('button', { name: 'Format.md' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Format.md');
+const chips = () => page.locator('.suggest .chip').allInnerTexts();
+const chip = (text) => page.locator('.suggest .chip').filter({ hasText: text }).first();
+
+await page.locator('.cm-line').filter({ hasText: 'Bold' }).first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' with **open');
+await page.waitForFunction(() => document.querySelector('.suggest .chip')?.textContent === '**');
+check('an unclosed bold is the first thing offered', (await chips())[0] === '**');
+
+await page.locator('.suggest .chip').first().click();
+check('the chip closes it', (await page.locator('.cm-content').innerText()).includes('**open**'));
+check('and hands the cursor back to the editor', await page.evaluate(() => document.activeElement?.closest('.cm-editor') !== null));
+
+// An empty line is where the block markers belong.
+await page.keyboard.press('End');
+await page.keyboard.press('Enter');
+await page.keyboard.press('Enter');
+await page.waitForFunction(() => [...document.querySelectorAll('.suggest .chip')].some((c) => c.textContent === '| Table'));
+check('an empty line offers the blocks', (await chips()).includes('## Heading'));
+await page.screenshot({ path: `${SP}/smoke-suggest.png` });
+
+const tablesBefore = await page.locator('.prose table').count();
+await chip('| Table').click();
+check('the table chip writes a whole skeleton', (await page.locator('.cm-content').innerText()).includes('| --- | --- |'));
+await page.waitForFunction((n) => document.querySelectorAll('.prose table').length > n, tablesBefore);
+check('and the preview renders it', true);
+
+// Inside a fence there is nothing markdown can do, so nothing is offered.
+await page.keyboard.press('Control+z');
+await page.waitForFunction(() => [...document.querySelectorAll('.suggest .chip')].some((c) => c.textContent === '``` Code'));
+await chip('``` Code').click();
+await page.keyboard.type('const a = 1;');
+await page.waitForFunction(() => document.querySelectorAll('.suggest .chip').length === 0);
+check('typing inside a closed fence offers nothing', (await chips()).length === 0);
+
+// The row can be got out of the way.
+await page.getByRole('button', { name: 'Hide suggestions' }).click();
+check('the suggestion row can be hidden', (await page.locator('.suggest .chip').count()) === 0);
+await page.getByRole('button', { name: 'Show suggestions' }).click();
+check('and brought back', await page.locator('.suggest').isVisible());
+
+// ---------- Converting a paste ----------
+await waitForSaved();
+await page.getByRole('button', { name: 'Long.md' }).click();
+await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Long.md');
+await page.locator('.cm-line').first().click();
+await page.keyboard.press('Home');
+await page.evaluate(() => navigator.clipboard.writeText('SHOPPING LIST\n\n\u2022 milk\n\u2022 eggs\n\u2022 a third thing\n'));
+await page.keyboard.press('Control+v');
+await page.waitForSelector('.notice-convert');
+check('a plain-text paste offers to convert', (await page.locator('.notice-convert').innerText()).includes('looks like plain text'));
+check('and says what it would do', (await page.locator('.notice-convert').innerText()).includes('headings'));
+check('while leaving the paste exactly as it arrived', (await page.locator('.cm-content').innerText()).includes('\u2022 milk'));
+await page.screenshot({ path: `${SP}/smoke-paste.png` });
+
+await page.getByRole('button', { name: 'Convert', exact: true }).click();
+const pasted = await page.locator('.cm-content').innerText();
+check('converting rewrites just the pasted range', pasted.includes('# SHOPPING LIST') && pasted.includes('- milk'), pasted.slice(0, 60));
+check('and leaves the rest of the note alone', pasted.includes('Scroll sync'));
+check('the offer goes once it is taken', (await page.locator('.notice-convert').count()) === 0);
+
+await page.keyboard.press('Control+z');
+check('one undo takes the conversion back to the paste', (await page.locator('.cm-content').innerText()).includes('\u2022 milk'));
+
+// A paste that is markdown already is not second-guessed.
+await page.evaluate(() => navigator.clipboard.writeText('## A heading\n\nWith **bold** in it and a `span`.\n'));
+await page.keyboard.press('Control+v');
+await page.waitForTimeout(200);
+check('a markdown paste is left alone', (await page.locator('.notice-convert').count()) === 0);
+check('and still lands in the document', (await page.locator('.cm-content').innerText()).includes('## A heading'));
+
 // ---------- Phone layout (OnePlus 12) ----------
 const phone = await browser.newPage({
   viewport: { width: 412, height: 915 },

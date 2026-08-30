@@ -238,7 +238,7 @@ the way the current keyboard has it printed.
 
 ## 9. Beyond the plan
 
-Two things asked for after the original five milestones.
+Things asked for after the original five milestones.
 
 ### Repairing LLM-damaged markdown
 
@@ -314,8 +314,73 @@ experience rather than an edge case, which is why a phone now opens on the *rend
 rather than the source: reading is what most phone visits are for, and there is nothing to
 save into anyway.
 
+### Plain text back into markdown
+
+`src/markdown/fromPlainText.ts` is the mirror of `plaintext.ts` and, like `repair.ts`, a pure
+pipeline over a string applied to the buffer rather than the file. Fences and inline spans are
+masked out first for the same reason: code is the one place where indentation, pipes and
+shouting are content rather than shape.
+
+The document is split on blank lines, and each block is then split again into *runs* of lines
+of one kind — items, quote, table rows, indented code, divider, prose. Doing it per line
+rather than per block is what lets `Shopping:` followed straight by three bullets come out as
+a paragraph and a list rather than one confused thing.
+
+Three choices are worth keeping:
+
+- **Nesting is recovered by ranking indent widths, not by measuring them.** Plain text
+  indents by whatever the bullet happened to be wide, so `• `/`◦ ` gives three spaces and
+  `- ` gives two. Sorting the widths that actually occur in a list and taking each one's rank
+  as its depth works whatever the original spacing was.
+- **Nothing is emitted that cannot be named.** Each converter declares what it *would* call
+  its work, and the name only counts if the text it produced actually differs from the text
+  it was given. If the change list ends up empty, the source is returned untouched — the
+  offer to convert is made on the strength of that list, so an unnamed rewrite must never
+  slip through. This is also what keeps a note that is already markdown safe: run it through
+  and nothing is named, so nothing happens.
+- **Only what plain text encodes is recovered.** Headings come from shouting or an underline;
+  emphasis does not come back at all, because nothing in the plain text says where it was.
+  Guessing it would be writing rather than punctuating.
+
+### Suggestions as you type
+
+`src/markdown/suggest.ts` is a pure function from a small context — the cursor's line and
+column, the selection, the line above, and two flags saying whether the cursor is in code —
+to at most six suggestions, each an `insert`, a `wrap` or a `prefix`. The rules are therefore
+readable and testable on their own, and `SuggestionBar.tsx` only has to know how to apply
+three shapes of edit.
+
+The two code flags come from the syntax tree rather than from counting fences up the
+document: the tree is already built, already knows, and this runs on every keystroke. An
+unclosed fence is a `FencedCode` node that runs to the end of the document without a closing
+fence on its last line.
+
+Closing beats starting, always. An unclosed `**` changes how everything after it renders,
+so it is offered first and, in the case of an open code span or an open fence, offered
+alone — nothing else in there would do anything.
+
+The chips wrap or insert; they never rewrite the line under the cursor. A row that changed
+the document on its own would be an autocorrect, and this is a suggestion.
+
 ## 10. Known issues
 
+- **The conversion cannot recover emphasis, and cannot recover a heading's level.** Plain
+  text records neither. A converted note comes back with its structure and none of its
+  bold, and every heading at level 1 or 2. Heading case survives as it was written, so a
+  shouted heading stays shouted.
+- **Only `text/plain` is read from the clipboard.** Pasting from a web page or a word
+  processor also puts `text/html` there, which carries the bold, the links and the heading
+  levels that the plain-text heuristics have to do without. Reading it would recover more
+  than any amount of guessing; it is a converter of its own, and was not built.
+- **The link label is a guess.** Everything back to the last sentence end, capped at 60
+  characters, which can take in a clause that was not the label. A longer run keeps its
+  brackets rather than guessing wider.
+- **Reflow can join lines that were meant to stay apart.** The width-band test keeps poems
+  and addresses out of it, but a paragraph of evenly-sized short lines that genuinely wanted
+  their breaks would be joined. It is one undo away, and named in the offer before it happens.
+- **Suggestions read the current line only.** An inline marker left open on the line above is
+  not noticed, which is deliberate — a stray `*` three paragraphs up is not worth nagging
+  about — but it does mean a marker spanning a soft-wrapped sentence goes unremarked.
 - **No syntax highlighting inside editor code fences.** Still deferred, and now
   deliberately: `@codemirror/language-data` means a lazy chunk per language and six more
   dependencies, which fights the bundle work above, to highlight code that the preview is
@@ -336,8 +401,9 @@ save into anyway.
 - **Copy writes plain text only, never `text/html`.** Adding an HTML flavour would make
   rich targets paste with real formatting, but it would also override the plain text in
   boxes that accept both — the opposite of what the feature is for.
-- **The plain-text export is one-way.** It is not markdown and must not be pasted back into
-  a note; a second pass through it would flatten nesting. Use *Markdown source* for that.
+- **The plain-text export does not round-trip.** Pasting it back into a note now offers a
+  conversion, which recovers the structure but not the emphasis, and leaves every heading
+  shouting. Use *Markdown source* where the note itself is what is wanted.
 - **Heading levels do not survive the plain-text export.** Every heading uppercases, so a
   three-level document reads as a flat one.
 
