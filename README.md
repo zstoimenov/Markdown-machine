@@ -45,6 +45,34 @@ directly in your browser through the File System Access API — nothing is uploa
 is no server to upload to. The folder you pick is remembered per origin, so the hosted app
 and a local `npm run dev` keep separate ones.
 
+## Installing it
+
+The page installs as an app — Chrome's ⊕ in the address bar, or *Add to Home Screen* on a
+phone — and then runs in its own window with no browser chrome, off a home screen icon, and
+without a network.
+
+The icon is the split view: a tile divided down the middle, paper on the left where the
+source is and ink on the right where the rendering is, with one monospace `#` laid across
+the seam taking the opposite colour on each side. It is drawn in
+[`scripts/icons.mjs`](scripts/icons.mjs) rather than checked in as a picture, so the SVG the
+browser uses in a tab, the PNGs a home screen wants and the maskable variant Android crops
+all come out of the same four strokes. Re-run it if the mark changes:
+
+```sh
+npm install --no-save playwright
+node scripts/icons.mjs
+```
+
+Offline is not a bonus feature here, it is the point: an app whose whole claim is that your
+notes never leave your disk should not need a network to open them.
+[`public/sw.js`](public/sw.js) takes the shell and every chunk on the first visit — the
+lazily-loaded editor included, since that is the half you would be offline to use — and after
+that a build asset carries a content hash and can never go stale, so it is served from the
+cache without asking, while everything else goes to the network first, so a deploy is picked
+up on the next load rather than the one after. There is no list kept by hand: the build says
+what it emitted and the page says where it is. It is registered in a build only, so
+`npm run dev` never serves you yesterday's bundle.
+
 ## Counting and copying
 
 The status bar shows words and **symbols** — characters including spaces, counted the way a
@@ -197,9 +225,27 @@ so there is no folder mode on mobile at all. What you get instead is the single-
 fallback: open one `.md` file, read it, edit it, download a copy. It cannot save in place,
 because the browser gives no handle to write back through.
 
-The layout adapts to phone widths either way — the file tree becomes a drawer, the split
-view collapses to a single pane that lands on the rendered note, and touch targets and the
-editor's type size are sized for a thumb.
+The layout is rebuilt at phone widths rather than squeezed. A phone has room for about
+three things in a toolbar and, while you are writing, for one — the words — so:
+
+- **The toolbar keeps what is used every minute:** the drawer, which note this is, and
+  whether you are writing or reading. Everything occasional — both copy forms, *Plain →
+  markdown*, *Fix markdown*, *Revert*, *Rename*, *Delete*, *Download*, *Open folder* — is
+  behind ⋯, which opens a sheet **from the bottom**, because the top-right corner of a phone
+  is the one place a thumb holding it cannot reach.
+- **The drawer is for choosing a note**, not for acting on one. It holds the tree and *New
+  note* and nothing else.
+- **A software keyboard does not bury the app.** `100dvh` survives an address bar and
+  nothing else, so the app is sized from the visual viewport — or from
+  `env(keyboard-inset-height)` where Chromium offers it — and the suggestion row lands on
+  top of the keys rather than under them.
+- **While the keyboard is up, everything that is not the writing steps back:** the status
+  bar and any standing explanation go, leaving the note and one row of suggestions. Whether
+  the note has reached the disk is the one thing from the status bar worth knowing
+  mid-sentence, so it moves to the toolbar as a dot. Everything returns when the keyboard
+  does.
+- The split view collapses to a single pane that lands on the rendered note, and touch
+  targets and the editor's type size are sized for a thumb.
 
 ## Running it
 

@@ -554,13 +554,54 @@ const editorFont = await phone.evaluate(() => getComputedStyle(document.querySel
 check('the editor does not trigger zoom-on-focus', parseFloat(editorFont) >= 16, editorFont);
 check('no horizontal overflow while editing', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 
-await phone.getByRole('button', { name: 'Copy', exact: true }).tap();
-await phone.waitForSelector('.copy-menu');
-check('the copy menu is reachable on a phone', await phone.locator('.copy-menu').isVisible());
+// Everything occasional is behind one button, and it comes up from the bottom
+// where a thumb can reach it.
+check('the toolbar keeps only what is used constantly', (await phone.locator('.toolbar .button').count()) === 0);
+check('and names the note rather than the folder', (await phone.locator('.vault-name').innerText()) === 'Phone.md');
+
+await phone.getByRole('button', { name: 'More' }).tap();
+await phone.waitForSelector('.sheet');
+const sheetBox = await phone.locator('.sheet').boundingBox();
+check('the note menu opens from the bottom', sheetBox.y + sheetBox.height >= 900, JSON.stringify(sheetBox));
 check('and does not push the page sideways', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-const menuBox = await phone.locator('.copy-menu').boundingBox();
-check('the copy menu stays on screen', menuBox.x >= 0 && menuBox.x + menuBox.width <= 412, JSON.stringify(menuBox));
-await phone.screenshot({ path: `${SP}/smoke-phone-copy.png` });
+check('it carries the copy forms', (await phone.locator('.sheet').innerText()).includes('Copy markdown source'));
+check('and the note repairs', (await phone.locator('.sheet').innerText()).includes('Fix markdown'));
+const rows = await phone.evaluate(() =>
+  [...document.querySelectorAll('.sheet-group button')].map((el) => el.getBoundingClientRect().height),
+);
+check('every row is a thumb target', Math.min(...rows) >= 40, `min ${Math.min(...rows)}px`);
+await phone.screenshot({ path: `${SP}/smoke-phone-menu.png` });
+
+await phone.getByRole('menuitem', { name: /Copy text for pasting/ }).tap();
+await phone.waitForSelector('.sheet-message');
+check('copying from the sheet reports back', (await phone.locator('.sheet-message').innerText()).includes('Copied'));
+// Tapped above the sheet, which is the part of the scrim a person can see.
+await phone.getByRole('button', { name: 'Close menu' }).tap({ position: { x: 200, y: 60 } });
+await phone.waitForFunction(() => document.querySelector('.sheet') === null);
+check('the sheet closes on the scrim', true);
+
+// A software keyboard cannot be raised in a headless browser, so what is checked
+// is the half that is ours: with one up, the status bar steps back and the
+// suggestion row is the last thing above it.
+await phone.locator('.cm-content').tap();
+await phone.waitForSelector('.suggest .chip');
+const beforeKeyboard = (await phone.locator('.suggest').boundingBox()).y;
+await phone.evaluate(() => document.body.classList.add('is-keyboard'));
+check('the status bar steps back for the keyboard', (await phone.locator('.status').count()) === 0 || !(await phone.locator('.status').isVisible()));
+const afterKeyboard = (await phone.locator('.suggest').boundingBox()).y;
+check('which leaves the suggestion row at the bottom', afterKeyboard > beforeKeyboard, `${beforeKeyboard} -> ${afterKeyboard}`);
+await phone.screenshot({ path: `${SP}/smoke-phone-keyboard.png` });
+await phone.evaluate(() => document.body.classList.remove('is-keyboard'));
+
+// The app is sized from the visual viewport rather than from the window, which
+// is what puts that row above the keys rather than under them.
+await phone.evaluate(() => {
+  document.documentElement.style.setProperty('--app-height', '500px');
+});
+const squeezed = await phone.locator('.suggest').boundingBox();
+check('the shell follows the viewport it is given', squeezed.y + squeezed.height <= 502, JSON.stringify(squeezed));
+await phone.evaluate(() => document.documentElement.style.removeProperty('--app-height'));
+
 await phone.screenshot({ path: `${SP}/smoke-phone.png` });
 await phone.close();
 

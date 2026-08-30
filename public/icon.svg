@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Markdown Machine">
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="96"/></clipPath>
+    <clipPath id="source"><rect width="256" height="512"/></clipPath>
+    <clipPath id="rendered"><rect x="256" width="256" height="512"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#fdfdfc"/>
+    <rect x="256" width="256" height="512" fill="#2f6f4f"/>
+    <g clip-path="url(#source)" stroke="#2f6f4f"><g transform="translate(256 256) scale(0.94) translate(-256 -256)" fill="none" stroke-width="41" stroke-linecap="round"><line x1="222" y1="132" x2="180" y2="380"/><line x1="332" y1="132" x2="290" y2="380"/><line x1="130" y1="202" x2="382" y2="202"/><line x1="130" y1="310" x2="382" y2="310"/></g></g>
+    <g clip-path="url(#rendered)" stroke="#fdfdfc"><g transform="translate(256 256) scale(0.94) translate(-256 -256)" fill="none" stroke-width="41" stroke-linecap="round"><line x1="222" y1="132" x2="180" y2="380"/><line x1="332" y1="132" x2="290" y2="380"/><line x1="130" y1="202" x2="382" y2="202"/><line x1="130" y1="310" x2="382" y2="310"/></g></g>
+  </g>
+</svg>

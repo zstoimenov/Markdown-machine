@@ -362,8 +362,54 @@ alone — nothing else in there would do anything.
 The chips wrap or insert; they never rewrite the line under the cursor. A row that changed
 the document on its own would be an autocorrect, and this is a suggestion.
 
+### Installing it, and the mark
+
+The icon is generated from four stroked lines rather than stored as a drawing, so one
+geometry serves the tab, the home screen and Android's mask. The mark is the split view — a
+tile divided down the middle, paper where the source is and ink where the rendering is, one
+`#` across the seam inverting on each side. It reads at 48px, it is nobody else's, and the
+idea it carries is the app's own rather than the file format's: a markdown logo would have
+said "this is a .md file", which is not what this is.
+
+The service worker is there because the offline claim is the product. Two strategies, picked
+by what is being fetched: content-hashed build output is immutable and served from the cache
+without asking, everything else goes to the network first so a deploy lands on the next load.
+The one thing that cannot wait to be asked for is the first visit itself: the worker is still
+installing while that page loads, so nothing goes through it, and without a precache the app
+would only work offline from the second visit on. There is still no list kept by hand — the
+build writes what it emitted to `assets/build-manifest.json` and the worker reads that, which
+is also how the lazily-loaded editor chunk gets taken along. Registered in a build only, so
+the dev server and the fixture are never stale.
+
+### The phone, rebuilt
+
+The phone layout stopped being the desktop one with things hidden and became its own
+arrangement, on one rule: a phone toolbar holds about three things, and while the keyboard is
+up the screen holds one. So the toolbar keeps the drawer, the note's name and Write/Read;
+everything occasional moved into a bottom sheet behind ⋯; the drawer went back to being a
+list of notes rather than a list of notes and five verbs.
+
+The keyboard problem was the real one. `100dvh` accounts for an address bar and not for a
+keyboard, so the bottom of the app — the suggestion row and the status bar, which is exactly
+what you want while writing — ended up underneath the keys. Both ways out are used, because
+neither is everywhere: Chromium's VirtualKeyboard API is told to stop resizing anything and
+to publish the keyboard's height as `env(keyboard-inset-height)`, which keeps the layout
+viewport still; everywhere else the visual viewport's height drives a custom property. The
+pieces that step back while the keyboard is up do it from a class on `<body>`, so none of
+them re-render to get out of the way.
+
 ## 10. Known issues
 
+- **The keyboard is detected, not reported.** Where there is no VirtualKeyboard API the only
+  signal is the visual viewport shrinking, and the line between "a keyboard opened" and
+  "some browser chrome slid away" is a threshold rather than a fact. A very short keyboard
+  on a very short screen would be read as chrome.
+- **The first visit still needs a network.** The worker takes a copy of everything while
+  that visit is happening, so from the second load on there is nothing left to fetch — but
+  there is no app to install before you have been to it once.
+- **`.md` files do not open into the installed app.** A manifest can register file handlers,
+  and the single-file path already knows how to read one; wiring the two together is a
+  feature rather than an icon, and was not built.
 - **The conversion cannot recover emphasis, and cannot recover a heading's level.** Plain
   text records neither. A converted note comes back with its structure and none of its
   bold, and every heading at level 1 or 2. Heading case survives as it was written, so a
