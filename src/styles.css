@@ -65,6 +65,23 @@ body,
   height: 100%;
 }
 
+/**
+ * A stray downward swipe near the top of an Android screen is a page reload, and
+ * a page reload in the middle of writing is the worst thing this app can do to
+ * someone: on the folder path it also drops the permission, so what looked like
+ * a scroll ends at the "Welcome back" screen.
+ *
+ * `none` rather than `contain`: the two differ on whether the gesture's own
+ * effect survives, and the reports disagree about which of them still fires the
+ * refresh. The overscroll glow is a small thing to trade for never losing a
+ * paragraph. Both elements, because Chrome honours it on the body and Safari on
+ * the root.
+ */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 #root {
   /* `100dvh` is the floor: it survives the address bar shrinking. A software
      keyboard does not move it, so `--app-height` takes over when one is up —
@@ -554,6 +571,9 @@ body {
 .pane {
   min-width: 0;
   overflow-y: auto;
+  /* Reaching the end of a pane is the end of the gesture, not the beginning of
+     one for whatever is behind it. */
+  overscroll-behavior: contain;
 }
 
 /* A column, because the editor now shares the pane with the suggestion row and,

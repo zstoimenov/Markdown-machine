@@ -312,12 +312,23 @@ check('edits autosave rather than waiting for a download', true);
 
 // And the bug this was all for: a reload used to take the note and the edits.
 await fallback.reload({ waitUntil: 'networkidle' });
-await fallback.waitForSelector('.tree-row');
+await fallback.waitForSelector('.prose h1');
 check('straight into the library, with no splash to get past', (await fallback.locator('.splash-card').count()) === 0);
 check('the note survives a reload', (await fallback.locator('.tree-row', { hasText: 'Dropped.md' }).count()) === 1);
-await fallback.locator('.tree-row', { hasText: 'Dropped.md' }).click();
-await fallback.waitForSelector('.prose h1');
+// And it is open, rather than waiting to be found again: a reload is rarely
+// something anyone chose.
+check('the note that was open is open again', (await fallback.locator('.status-path').innerText()) === 'Dropped.md');
 check('and so do the edits', (await fallback.locator('.cm-content').innerText()).includes('Edited on the device.'));
+
+// The gesture that caused all this: a swipe at the top of an Android screen.
+const overscroll = await fallback.evaluate(() => ({
+  html: getComputedStyle(document.documentElement).overscrollBehaviorY,
+  body: getComputedStyle(document.body).overscrollBehaviorY,
+  editor: getComputedStyle(document.querySelector('.cm-scroller')).overscrollBehaviorY,
+  pane: getComputedStyle(document.querySelector('.pane')).overscrollBehaviorY,
+}));
+check('pull-to-refresh is off at the root', overscroll.html === 'none' && overscroll.body === 'none', JSON.stringify(overscroll));
+check('and the panes do not hand the gesture up to it', overscroll.editor === 'contain' && overscroll.pane === 'contain', JSON.stringify(overscroll));
 await fallback.screenshot({ path: `${SP}/smoke-device.png` });
 
 // A second file joins the first rather than replacing it.

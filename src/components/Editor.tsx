@@ -22,6 +22,9 @@ const theme = EditorView.theme({
     fontSize: '13.5px',
     lineHeight: '1.7',
     overflow: 'auto',
+    // Hitting the top of the document must not hand the swipe to the browser,
+    // which reads it as a reload — see the overscroll rules in styles.css.
+    overscrollBehavior: 'contain',
   },
   '.cm-content': { padding: '24px 20px 60vh', caretColor: 'var(--text)' },
   '.cm-line': { padding: '0 2px' },
