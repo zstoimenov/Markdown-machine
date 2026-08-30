@@ -18,8 +18,8 @@ export function FallbackNotice() {
     <div className="notice">
       <span>
         {narrow
-          ? 'Read-only — download a copy to keep your changes.'
-          : 'One file, opened read-only — this browser cannot write back to the original. Your edits live here until you download a copy.'}
+          ? 'Read-only — save a copy to keep your changes.'
+          : 'One file, opened read-only — this browser cannot write back to the original. Your edits live here until you save a copy out.'}
       </span>
       {narrow && (
         <button

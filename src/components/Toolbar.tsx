@@ -1,5 +1,6 @@
 import { useIsNarrow } from '../hooks/useMediaQuery';
 import { baseName } from '../fs/types';
+import { canShareFile } from '../fs/singleFileAdapter';
 import { CopyButton } from './CopyButton';
 import { NoteMenu } from './NoteMenu';
 import { isDirty, useVault, type ViewMode } from '../state/vaultStore';
@@ -87,8 +88,12 @@ export function Toolbar() {
           <>
             <CopyButton />
             {mode === 'single-file' && activePath !== null && (
-              <button type="button" className="button button-primary" onClick={downloadActive}>
-                Download
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => void downloadActive()}
+              >
+                {canShareFile() ? 'Save a copy…' : 'Download'}
               </button>
             )}
             {mode === 'vault' && (

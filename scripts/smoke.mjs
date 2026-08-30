@@ -580,6 +580,27 @@ await phone.getByRole('button', { name: 'Close menu' }).tap({ position: { x: 200
 await phone.waitForFunction(() => document.querySelector('.sheet') === null);
 check('the sheet closes on the scrim', true);
 
+// Saving out. Where the platform has a share sheet — which on iOS is the only
+// route back to the folder the note came from — the button goes through it
+// rather than dropping a copy in Downloads.
+await phone.evaluate(() => {
+  window.__shared = [];
+  const define = (name, value) =>
+    Object.defineProperty(navigator, name, { configurable: true, value });
+  define('canShare', (data) => Array.isArray(data?.files) && data.files.length > 0);
+  define('share', async (data) => {
+    window.__shared.push(data.files.map((file) => `${file.name}:${file.type}`));
+  });
+});
+await phone.getByRole('button', { name: 'More' }).tap();
+await phone.waitForSelector('.sheet');
+check('the save is offered as the share sheet where there is one', (await phone.locator('.sheet').innerText()).includes('Save a copy'));
+await phone.getByRole('menuitem', { name: /Save a copy/ }).tap();
+await phone.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
+const shared = await phone.evaluate(() => window.__shared[0]);
+check('and hands over the note under its own name', shared[0].startsWith('Phone.md:'), JSON.stringify(shared));
+check('no download was started as well', (await phone.evaluate(() => window.__shared.length)) === 1);
+
 // A software keyboard cannot be raised in a headless browser, so what is checked
 // is the half that is ours: with one up, the status bar steps back and the
 // suggestion row is the last thing above it.
