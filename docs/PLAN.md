@@ -407,8 +407,42 @@ viewport still; everywhere else the visual viewport's height drives a custom pro
 pieces that step back while the keyboard is up do it from a class on `<body>`, so none of
 them re-render to get out of the way.
 
+### Being asked for the folder every time
+
+The re-permission prompt was never the app's to remove, but it was the app's to explain. Since
+Chrome 122 the prompt on a *re-request* has three answers rather than two, and **Allow on every
+visit** ends the asking for good — the condition for it being offered is exactly what this app
+already did: keep the handle in IndexedDB, recall it on the next visit, call
+`requestPermission()` on a gesture. What was wrong was the splash, which said Chrome asks again
+on every load, so people picked *Allow this time* and made that true. It now names the option
+that stops it.
+
+Two supporting changes. `navigator.storage.persist()` is requested when a folder is picked: the
+handle is evictable site data otherwise, and losing it is worse than a prompt — it is the
+picker again, with no memory of which folder was yours. And installing the app weighs in favour
+of Chrome persisting the permission, which is a second reason for the manifest that went in for
+the icon.
+
+### Saving out where there is nothing to save into
+
+iOS cannot have the folder mode and will not get it: Safari implements only the Origin Private
+File System — no `showDirectoryPicker`, no `showOpenFilePicker`, no `showSaveFilePicker`, on
+iOS, iPadOS or macOS — and every browser on iOS is Safari underneath. So the single-file
+fallback is the whole of the mobile Apple experience, and it was ending in a download into
+Downloads.
+
+It now goes through the share sheet where the platform has one, which on iOS means *Save to
+Files* and therefore the folder the note came from. The share object carries `files` and
+nothing else, because iOS rejects a mixed one; a dismissed sheet counts as handled rather than
+falling through to a download the person just declined; and the sheet is only preferred on
+touch, since on a desktop it is a worse download.
+
 ## 10. Known issues
 
+- **The single-file fallback still holds the note in memory only.** A reload, or iOS
+  discarding a backgrounded tab, loses it along with any edits. The Origin Private File System
+  would survive both and works on iOS; keeping notes there is a storage mode of its own and
+  was not built.
 - **The keyboard is detected, not reported.** Where there is no VirtualKeyboard API the only
   signal is the visual viewport shrinking, and the line between "a keyboard opened" and
   "some browser chrome slid away" is a threshold rather than a fact. A very short keyboard

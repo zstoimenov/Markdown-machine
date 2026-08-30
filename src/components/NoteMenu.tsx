@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
 import { looksLikeMarkdown } from '../markdown/fromPlainText';
+import { canShareFile } from '../fs/singleFileAdapter';
 import { canRevert, useVault } from '../state/vaultStore';
 
 /**
@@ -136,8 +137,12 @@ export function NoteMenu() {
               <h2>{mode === 'single-file' ? 'File' : 'Folder'}</h2>
               {mode === 'single-file' && activePath !== null && (
                 <button type="button" role="menuitem" onClick={() => run(downloadActive)}>
-                  <span>Download a copy</span>
-                  <small>The only way to keep changes in this browser</small>
+                  <span>{canShareFile() ? 'Save a copy…' : 'Download a copy'}</span>
+                  <small>
+                    {canShareFile()
+                      ? 'Through the share sheet — Save to Files puts it back where it came from'
+                      : 'The only way to keep changes in this browser'}
+                  </small>
                 </button>
               )}
               {mode === 'vault' && canWrite && activePath !== null && (

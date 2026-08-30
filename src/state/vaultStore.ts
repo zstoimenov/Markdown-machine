@@ -9,7 +9,7 @@ import {
   type VaultAdapter,
 } from '../fs/types';
 import type { EditorView } from '@codemirror/view';
-import { downloadText, openSingleFile } from '../fs/singleFileAdapter';
+import { canShareFile, downloadText, openSingleFile, shareText } from '../fs/singleFileAdapter';
 import { diagnose, repair, type RepairIssue } from '../markdown/repair';
 import { toMarkdown } from '../markdown/fromPlainText';
 import {
@@ -99,7 +99,7 @@ interface VaultState {
   close: () => Promise<void>;
   enableWriting: () => Promise<void>;
   openLooseFile: (file: File) => Promise<void>;
-  downloadActive: () => void;
+  downloadActive: () => Promise<void>;
   toggleDir: (path: string) => Promise<void>;
   openFile: (path: string) => Promise<void>;
   setDraft: (value: string) => void;
@@ -332,10 +332,16 @@ export const useVault = create<VaultState>((set, get) => {
       await load(file.name);
     },
 
-    downloadActive() {
+    /**
+     * Get the note out of a browser that cannot write it back. The share sheet
+     * where there is one — on iOS that is the only route to the folder the note
+     * came from — and a download everywhere else.
+     */
+    async downloadActive() {
       const { activePath, draft, source } = get();
       const contents = draft ?? source;
       if (activePath === null || contents === null) return;
+      if (canShareFile() && (await shareText(activePath, contents))) return;
       downloadText(activePath, contents);
     },
 

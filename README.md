@@ -45,6 +45,14 @@ directly in your browser through the File System Access API — nothing is uploa
 is no server to upload to. The folder you pick is remembered per origin, so the hosted app
 and a local `npm run dev` keep separate ones.
 
+**Being asked for the folder on every load is avoidable.** When the app asks again, Chrome
+offers *Allow this time* and **Allow on every visit** — the second one is the end of it. The
+folder is remembered from then on, the app opens straight into it with no prompt and no click,
+and files and folders opened afterwards are persistent too. Installing the app weighs in
+favour of Chrome keeping that permission, which is the other reason to install it. The handle
+itself is kept in IndexedDB and the app asks for persistent storage when you pick a folder,
+so it is not the first thing thrown away when the disk gets tight.
+
 ## Installing it
 
 The page installs as an app — Chrome's ⊕ in the address bar, or *Add to Home Screen* on a
@@ -250,8 +258,15 @@ File System Access API, which Firefox and Safari have not shipped.
 
 **Phones and tablets, including Android Chrome:** the File System Access API is desktop-only,
 so there is no folder mode on mobile at all. What you get instead is the single-file
-fallback: open one `.md` file, read it, edit it, download a copy. It cannot save in place,
-because the browser gives no handle to write back through.
+fallback: open one `.md` file, read it, edit it, save a copy out. It cannot save in place,
+because the browser gives no handle to write back through — and it never will on iOS, where
+Safari implements only the sandboxed Origin Private File System and every browser is Safari
+underneath.
+
+Saving out goes through the platform's share sheet where there is one, rather than dropping a
+file into Downloads: on iOS the sheet's *Save to Files* can put the note back in the folder it
+came from, which is as close to saving in place as that platform allows. Elsewhere it stays a
+download.
 
 The layout is rebuilt at phone widths rather than squeezed. A phone has room for about
 three things in a toolbar and, while you are writing, for one — the words — so:

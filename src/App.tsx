@@ -72,7 +72,7 @@ export function App() {
         </p>
         <p className="muted">
           You can still open one file at a time here. It opens read-only, because this browser
-          gives no way to write back to the original — edit it and download a copy.
+          gives no way to write back to the original — edit it and save a copy out.
         </p>
       </Splash>
     );
@@ -112,8 +112,13 @@ export function App() {
         }
       >
         <p>
-          Chrome asks again for folder access each time the page loads. One click and your
-          notes are back.
+          Chrome will ask once more. Choose <strong>Allow on every visit</strong> and it stops
+          asking — the folder is remembered from then on and your notes open straight away.
+          <em>Allow this time</em> works too, and brings you back here on the next load.
+        </p>
+        <p className="muted">
+          Installing the app — the ⊕ in the address bar — weighs in favour of Chrome keeping
+          that permission.
         </p>
       </Splash>
     );
