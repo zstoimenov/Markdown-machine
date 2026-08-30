@@ -9,6 +9,7 @@ import {
   type VaultAdapter,
 } from './types';
 import { forgetVault, recallVault, rememberVault } from './handleStore';
+import { keepStorage } from './persist';
 
 export function isSupported(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
@@ -178,21 +179,6 @@ export async function pickVault(): Promise<VaultAdapter> {
   return new FsAccessVault(handle, writable);
 }
 
-/**
- * The handle to your folder lives in IndexedDB, which is evictable site data by
- * default — clear it under storage pressure and the app has forgotten which
- * folder is yours, and you are back at the picker rather than at a prompt.
- * Chromium decides this silently on engagement and install, so there is nothing
- * to interrupt anyone with, and nothing to do if it says no.
- */
-async function keepStorage(): Promise<void> {
-  try {
-    if (await navigator.storage?.persisted?.()) return;
-    await navigator.storage?.persist?.();
-  } catch {
-    // A browser that will not discuss its storage policy is not a failure to open a folder.
-  }
-}
 
 /**
  * Silently reopen the last folder if the browser still considers a permission

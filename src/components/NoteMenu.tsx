@@ -134,8 +134,8 @@ export function NoteMenu() {
             )}
 
             <section className="sheet-group">
-              <h2>{mode === 'single-file' ? 'File' : 'Folder'}</h2>
-              {mode === 'single-file' && activePath !== null && (
+              <h2>{mode === 'device' ? 'This device' : 'Folder'}</h2>
+              {mode === 'device' && activePath !== null && (
                 <button type="button" role="menuitem" onClick={() => run(downloadActive)}>
                   <span>{canShareFile() ? 'Save a copy…' : 'Download a copy'}</span>
                   <small>

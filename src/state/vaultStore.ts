@@ -9,7 +9,8 @@ import {
   type VaultAdapter,
 } from '../fs/types';
 import type { EditorView } from '@codemirror/view';
-import { canShareFile, downloadText, openSingleFile, shareText } from '../fs/singleFileAdapter';
+import { canShareFile, downloadText, shareText } from '../fs/singleFileAdapter';
+import { deviceNoteCount, importFile, openDeviceVault } from '../fs/deviceAdapter';
 import { diagnose, repair, type RepairIssue } from '../markdown/repair';
 import { toMarkdown } from '../markdown/fromPlainText';
 import {
@@ -35,11 +36,14 @@ export type VaultStatus =
 export type ViewMode = 'split' | 'editor' | 'preview';
 
 /**
- * 'vault' is the real thing: a folder, read and written in place. 'single-file'
- * is the fallback for browsers without the File System Access API — one file,
- * read-only, saved by downloading a copy.
+ * 'vault' is the real thing: a folder, read and written in place. 'device' is
+ * what a browser without the File System Access API gets instead: notes kept in
+ * that browser, on that device. It is a real vault — writable, holding more than
+ * one note, surviving a reload — which the read-only single file it replaced was
+ * not. What it is not is a folder on your disk, which is why saving a copy out
+ * stays the way notes leave.
  */
-export type VaultMode = 'vault' | 'single-file';
+export type VaultMode = 'vault' | 'device';
 
 export type SaveState =
   | { kind: 'idle' }
@@ -248,6 +252,12 @@ export const useVault = create<VaultState>((set, get) => {
 
     async init() {
       if (!isSupported()) {
+        // Notes already kept here are opened straight into; an empty library
+        // still explains itself first, since nobody arrives expecting one.
+        if ((await deviceNoteCount()) > 0) {
+          await adopt(await openDeviceVault(), 'device');
+          return;
+        }
         set({ status: 'unsupported' });
         return;
       }
@@ -290,10 +300,15 @@ export const useVault = create<VaultState>((set, get) => {
       }
     },
 
+    /**
+     * Put the vault down. On the device path that means walking away from the
+     * notes, not deleting them — they are still there on the next visit, and
+     * there is no picker to send anyone back to.
+     */
     async close() {
       await forgetVault();
       set({
-        status: 'empty',
+        status: isSupported() ? 'empty' : 'unsupported',
         adapter: null,
         vaultName: null,
         mode: 'vault',
@@ -326,10 +341,20 @@ export const useVault = create<VaultState>((set, get) => {
       }
     },
 
+    /**
+     * A file the browser handed over is kept rather than merely read. Holding it
+     * in memory was the old behaviour and the old bug: a reload, or iOS
+     * discarding a backgrounded tab, took the note and every edit with it.
+     */
     async openLooseFile(file) {
-      const adapter = openSingleFile(file);
-      await adopt(adapter, 'single-file');
-      await load(file.name);
+      const { adapter: current, mode } = get();
+      const name = await importFile(file);
+      if (current === null || mode !== 'device') {
+        await adopt(await openDeviceVault(), 'device');
+      } else {
+        await refreshDir('');
+      }
+      await load(name);
     },
 
     /**

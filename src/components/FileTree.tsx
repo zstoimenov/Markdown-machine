@@ -1,6 +1,7 @@
 import { useVault } from '../state/vaultStore';
 import { useIsNarrow } from '../hooks/useMediaQuery';
 import { looksLikeMarkdown } from '../markdown/fromPlainText';
+import { FilePicker } from './FilePicker';
 import type { TreeEntry } from '../fs/types';
 
 function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
@@ -79,6 +80,7 @@ export function FileTree() {
   // lives in the toolbar's menu, where a thumb can reach it and the targets are
   // a finger wide rather than a link in a row of links.
   const narrow = useIsNarrow();
+  const mode = useVault((s) => s.mode);
 
   if (!roots) return null;
 
@@ -113,6 +115,9 @@ export function FileTree() {
           <button type="button" className="link-button" onClick={() => void createNote()}>
             New note
           </button>
+          {/* The library has no folder to drop files into, so bringing one in is
+              an action rather than a place. */}
+          {mode === 'device' && <FilePicker compact />}
           {!narrow && (
             <>
               <button

@@ -681,7 +681,8 @@ body.is-dragging {
 
 .tree-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   padding: 2px 12px 10px;
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border);
@@ -690,6 +691,8 @@ body.is-dragging {
 .link-button {
   font: inherit;
   font-size: 12px;
+  /* A row of verbs wraps between them, never inside one. */
+  white-space: nowrap;
   padding: 0;
   border: 0;
   background: none;

@@ -288,20 +288,57 @@ await fallback.addInitScript(() => {
   delete window.showDirectoryPicker;
 });
 await fallback.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-check('unsupported browsers get the explanation', (await fallback.locator('.splash-card h1').innerText()).includes('open folders'));
-check('and are still offered a single file', await fallback.locator('.dropzone').isVisible());
+check('unsupported browsers get the explanation', (await fallback.locator('.splash-card h1').innerText()).includes('No folders'));
+check('and are offered somewhere to keep notes instead', await fallback.locator('.dropzone').isVisible());
 
 await fallback.setInputFiles('input[type=file]', {
   name: 'Dropped.md',
   mimeType: 'text/markdown',
-  buffer: Buffer.from('# Dropped\n\nRead-only, but readable.\n'),
+  buffer: Buffer.from('# Dropped\n\nKept on the device.\n'),
 });
 await fallback.waitForSelector('.prose h1');
-check('a loose file opens and renders', (await fallback.locator('.prose h1').innerText()) === 'Dropped');
-check('the fallback explains itself', (await fallback.locator('.notice').innerText()).includes('read-only'));
-check('the fallback offers a download instead of a save', await fallback.getByRole('button', { name: 'Download' }).isVisible());
-check('no folder actions are offered', (await fallback.getByRole('button', { name: 'New note' }).count()) === 0);
-await fallback.screenshot({ path: `${SP}/smoke-fallback.png` });
+check('a file opens and renders', (await fallback.locator('.prose h1').innerText()) === 'Dropped');
+check('the notice says where the notes are', (await fallback.locator('.notice').innerText()).includes('this browser'));
+check('and it can be put away', (await fallback.getByRole('button', { name: 'Dismiss' }).count()) === 1);
+check('saving a copy out is offered', await fallback.getByRole('button', { name: /Download|Save a copy/ }).isVisible());
+
+// The point of the whole exercise: this is a real vault now, so it is writable.
+check('the library is writable, unlike the file it replaced', (await fallback.locator('.status-save').innerText()) !== 'read-only');
+await fallback.locator('.cm-content').click();
+await fallback.keyboard.press('Control+End');
+await fallback.keyboard.type(' Edited on the device.');
+await fallback.waitForFunction(() => /^saved/.test(document.querySelector('.status-save')?.textContent ?? ''));
+check('edits autosave rather than waiting for a download', true);
+
+// And the bug this was all for: a reload used to take the note and the edits.
+await fallback.reload({ waitUntil: 'networkidle' });
+await fallback.waitForSelector('.tree-row');
+check('straight into the library, with no splash to get past', (await fallback.locator('.splash-card').count()) === 0);
+check('the note survives a reload', (await fallback.locator('.tree-row', { hasText: 'Dropped.md' }).count()) === 1);
+await fallback.locator('.tree-row', { hasText: 'Dropped.md' }).click();
+await fallback.waitForSelector('.prose h1');
+check('and so do the edits', (await fallback.locator('.cm-content').innerText()).includes('Edited on the device.'));
+await fallback.screenshot({ path: `${SP}/smoke-device.png` });
+
+// A second file joins the first rather than replacing it.
+await fallback.setInputFiles('input[type=file]', {
+  name: 'Second.md',
+  mimeType: 'text/markdown',
+  buffer: Buffer.from('# Second\n'),
+});
+await fallback.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Second.md');
+check('a second file joins the library', (await fallback.locator('.tree-row').count()) === 2);
+check('the folder actions are offered, since there is now something to act on', await fallback.getByRole('button', { name: 'New note' }).isVisible());
+
+// Importing the same name twice keeps both rather than overwriting one.
+await fallback.setInputFiles('input[type=file]', {
+  name: 'Second.md',
+  mimeType: 'text/markdown',
+  buffer: Buffer.from('# Second again\n'),
+});
+await fallback.waitForFunction(() => document.querySelectorAll('.tree-row').length === 3);
+check('a name already taken is made unique rather than overwritten', (await fallback.locator('.tree-row', { hasText: 'Second 2.md' }).count()) === 1);
+
 await fallback.close();
 
 // ---------- Repairing damaged markdown ----------

@@ -3,24 +3,59 @@ import { isMarkdownFile } from '../fs/types';
 import { useVault } from '../state/vaultStore';
 
 /**
- * Opens a single loose file, by button or by drop. Only used where folders are
- * unavailable, so it stays out of the way of the real path.
+ * Takes files into the device library, by button or by drop. Only used where
+ * folders are unavailable, so it stays out of the way of the real path.
+ *
+ * `compact` is the form used once there are already notes: a link rather than a
+ * landing pad, since by then the app is not empty and does not need one.
  */
-export function FilePicker() {
+export function FilePicker({ compact = false }: { compact?: boolean } = {}) {
   const openLooseFile = useVault((s) => s.openLooseFile);
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  function accept(file: File | undefined) {
+  function accept(files: FileList | null) {
     setOver(false);
-    if (!file) return;
-    if (!isMarkdownFile(file.name)) {
-      setProblem(`"${file.name}" is not a markdown file.`);
+    const chosen = [...(files ?? [])];
+    if (chosen.length === 0) return;
+
+    const wrong = chosen.find((file) => !isMarkdownFile(file.name));
+    if (wrong) {
+      setProblem(`"${wrong.name}" is not a markdown file.`);
       return;
     }
     setProblem(null);
-    void openLooseFile(file);
+    void (async () => {
+      // In order, so the last one opened is the last one chosen.
+      for (const file of chosen) await openLooseFile(file);
+    })();
+  }
+
+  const input = (
+    <input
+      ref={inputRef}
+      type="file"
+      multiple
+      accept=".md,.markdown,.mdown,.mkd,text/markdown"
+      hidden
+      onChange={(event) => {
+        accept(event.target.files);
+        // Reset, so choosing the same file twice in a row still fires change.
+        event.target.value = '';
+      }}
+    />
+  );
+
+  if (compact) {
+    return (
+      <>
+        <button type="button" className="link-button" onClick={() => inputRef.current?.click()}>
+          Add a file…
+        </button>
+        {input}
+      </>
+    );
   }
 
   return (
@@ -33,24 +68,14 @@ export function FilePicker() {
       onDragLeave={() => setOver(false)}
       onDrop={(event) => {
         event.preventDefault();
-        accept(event.dataTransfer.files[0]);
+        accept(event.dataTransfer.files);
       }}
     >
-      <p>Drop a .md file here</p>
+      <p>Drop .md files here</p>
       <button type="button" className="button" onClick={() => inputRef.current?.click()}>
-        or choose one…
+        or choose some…
       </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".md,.markdown,.mdown,.mkd,text/markdown"
-        hidden
-        onChange={(event) => {
-          accept(event.target.files?.[0]);
-          // Reset, so choosing the same file twice in a row still fires change.
-          event.target.value = '';
-        }}
-      />
+      {input}
       {problem && <p className="is-warn">{problem}</p>}
     </div>
   );

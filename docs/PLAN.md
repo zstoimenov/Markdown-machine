@@ -229,7 +229,8 @@ narrower than intended. It is expressed in `rem` now.
 
 **Single-file fallback.** Section 2 promised Firefox and Safari a degradation path, and M4
 delivers it: a drop zone and file picker on the unsupported splash open one `.md` file,
-which renders and can be edited, with a Download button in place of a save. It is
+which renders and can be edited, kept on the device, with a Save a copy button in place of a
+save in place. It is
 permanently unwritable — not "no permission yet" but no handle to write through at all —
 so autosave never runs and the banner says why.
 
@@ -437,8 +438,41 @@ nothing else, because iOS rejects a mixed one; a dismissed sheet counts as handl
 falling through to a download the person just declined; and the sheet is only preferred on
 touch, since on a desktop it is a worse download.
 
+### Notes where there is no folder
+
+The fallback for a browser without the File System Access API was one file held in memory,
+read-only, saved by downloading a copy — and a reload took the note and every edit with it. On
+iOS that was the whole experience, so the failure was total there rather than marginal.
+
+It is now a vault backed by IndexedDB: writable, holding more than one note, surviving a
+reload. That deletes a special case rather than adding one — autosave, New note, Rename and
+Delete all work through the same adapter seam as the folder path, and the read-only mode is
+gone.
+
+**IndexedDB rather than OPFS**, which was the obvious choice and the wrong one. Safari does not
+implement `createWritable`, so writing to the Origin Private File System there needs a
+dedicated worker holding sync access handles — a great deal of machinery for keeping some text
+between reloads, over the same site storage with the same eviction rules, when `idb-keyval` was
+already a dependency for the folder handle.
+
+**What it must not do is pretend.** Browser storage is not a disk: Safari clears
+script-writable storage after seven days without a visit unless the app is on the home screen,
+and storage pressure can take it sooner. Both have an answer and neither is the app's to apply
+on someone's behalf, so the notice states the position — home screen, keep copies — and
+`navigator.storage.persist()` is requested, after which the notice stops warning about a clock
+that no longer applies.
+
 ## 10. Known issues
 
+- **Notes on the device are not a backup.** They survive a reload and a discarded tab, which
+  is what they are for; they do not survive clearing site data, and on Safari they do not
+  survive a week away unless the app is on the home screen. Saving a copy out is the only
+  thing that puts a note somewhere the browser cannot reach.
+- **The device library is flat and has no images.** Directories would be a shape with nothing
+  behind it, and a relative image path needs the folder the note sits in.
+- **Where folder mode does run on a phone, write access may be session-scoped.** Some builds
+  offer only "until you close all tabs" rather than "Allow on every visit", and the page
+  cannot tell which prompt was shown or change the answer.
 - **The single-file fallback still holds the note in memory only.** A reload, or iOS
   discarding a backgrounded tab, loses it along with any edits. The Origin Private File System
   would survive both and works on iOS; keeping notes there is a storage mode of its own and
