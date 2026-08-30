@@ -1,4 +1,5 @@
 import { useVault } from '../state/vaultStore';
+import { looksLikeMarkdown } from '../markdown/fromPlainText';
 import type { TreeEntry } from '../fs/types';
 
 function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
@@ -68,8 +69,15 @@ export function FileTree() {
   const renameActive = useVault((s) => s.renameActive);
   const deleteActive = useVault((s) => s.deleteActive);
   const repairActive = useVault((s) => s.repairActive);
+  // The file as opened, not the draft: this decides whether a button is offered,
+  // and a judgement that flickered on every keystroke would be worse than useless.
+  const source = useVault((s) => s.source);
+  const converted = useVault((s) => s.converted);
+  const convertActive = useVault((s) => s.convertActive);
 
   if (!roots) return null;
+
+  const plain = source !== null && !looksLikeMarkdown(source);
 
   return (
     <>
@@ -82,6 +90,15 @@ export function FileTree() {
           onClick={repairActive}
         >
           Fix markdown
+        </button>
+        <button
+          type="button"
+          className="link-button"
+          disabled={activePath === null || converted || !plain}
+          title="Read this note as plain text and put the markdown syntax back into it"
+          onClick={convertActive}
+        >
+          Plain → markdown
         </button>
       </div>
       {canWrite && (

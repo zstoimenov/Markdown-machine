@@ -11,6 +11,7 @@ import {
 import type { EditorView } from '@codemirror/view';
 import { downloadText, openSingleFile } from '../fs/singleFileAdapter';
 import { diagnose, repair, type RepairIssue } from '../markdown/repair';
+import { toMarkdown } from '../markdown/fromPlainText';
 import {
   forgetVault,
   isSupported,
@@ -83,6 +84,8 @@ interface VaultState {
   repairs: RepairIssue[];
   /** Set once someone has waved the repair offer away for this file. */
   repairDismissed: boolean;
+  /** Set once a note has been run through the plain-text conversion. */
+  converted: boolean;
   /** Only meaningful at phone widths, where the file tree is a drawer. */
   sidebarOpen: boolean;
   loadingFile: boolean;
@@ -103,6 +106,7 @@ interface VaultState {
   setViewMode: (mode: ViewMode) => void;
   setEditorView: (view: EditorView | null) => void;
   repairActive: () => void;
+  convertActive: () => void;
   dismissRepair: () => void;
   setSidebarOpen: (open: boolean) => void;
 
@@ -201,6 +205,7 @@ export const useVault = create<VaultState>((set, get) => {
           saveState: { kind: 'idle' },
           repairs: diagnose(text),
           repairDismissed: false,
+          converted: false,
         };
       });
     } catch (error) {
@@ -234,6 +239,7 @@ export const useVault = create<VaultState>((set, get) => {
     editorView: null,
     repairs: [],
     repairDismissed: false,
+    converted: false,
     sidebarOpen: false,
     loadingFile: false,
     saveState: { kind: 'idle' },
@@ -428,6 +434,35 @@ export const useVault = create<VaultState>((set, get) => {
         set((state) => ({ draft: text, revision: state.revision + 1 }));
       }
       set({ repairs: [], repairDismissed: true });
+    },
+
+    /**
+     * The other direction from `plaintext.ts`: read the buffer as plain text and
+     * put the markdown back into it. Like a repair it rewrites the buffer rather
+     * than the file, so it is read before it is kept and one Ctrl+Z takes it back.
+     */
+    convertActive() {
+      const { draft, source, editorView } = get();
+      const current = draft ?? source;
+      if (current === null) return;
+
+      const { text } = toMarkdown(current);
+      if (text === current) {
+        set({ converted: true });
+        return;
+      }
+
+      if (editorView) {
+        // One transaction, so a single Ctrl+Z takes the whole conversion back.
+        editorView.dispatch({
+          changes: { from: 0, to: editorView.state.doc.length, insert: text },
+          userEvent: 'input.convert',
+        });
+      } else {
+        // No editor mounted (reading mode): push it through the store instead.
+        set((state) => ({ draft: text, revision: state.revision + 1 }));
+      }
+      set({ converted: true });
     },
 
     dismissRepair() {

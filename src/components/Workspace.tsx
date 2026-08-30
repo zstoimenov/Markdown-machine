@@ -9,6 +9,10 @@ import { useScrollSync } from '../hooks/useScrollSync';
  * never touch it. Splitting it out keeps it off the critical path.
  */
 const Editor = lazy(() => import('./Editor').then((module) => ({ default: module.Editor })));
+import type { PasteOffer } from './Editor';
+import { ConvertOffer } from './ConvertOffer';
+import { SuggestionBar } from './SuggestionBar';
+import type { SuggestContext } from '../markdown/suggest';
 import { Preview } from './Preview';
 
 const MIN_PANE_PERCENT = 20;
@@ -26,6 +30,8 @@ export function Workspace({ path, source }: { path: string; source: string }) {
   const viewMode = narrow && stored === 'split' ? 'preview' : stored;
 
   const [view, setView] = useState<EditorView | null>(null);
+  const [context, setContext] = useState<SuggestContext | null>(null);
+  const [paste, setPaste] = useState<PasteOffer | null>(null);
   const setEditorView = useVault((s) => s.setEditorView);
   const [previewPane, setPreviewPane] = useState<HTMLElement | null>(null);
   const [editorPercent, setEditorPercent] = useState(50);
@@ -82,12 +88,16 @@ export function Workspace({ path, source }: { path: string; source: string }) {
               key={`${path}#${revision}`}
               initialDoc={draft ?? source}
               onChange={setDraft}
+              onContext={setContext}
+              onPaste={setPaste}
               onViewReady={(next) => {
                 setView(next);
                 setEditorView(next);
               }}
             />
           </Suspense>
+          {paste && <ConvertOffer view={view} offer={paste} onDone={() => setPaste(null)} />}
+          <SuggestionBar view={view} context={context} />
         </div>
       )}
 
