@@ -270,24 +270,35 @@ heading and its body is gone, the boundary is unrecoverable, so the heading keep
 The counter counts characters by code point rather than `String.length`, so an emoji is one
 symbol, not two — matching how a paste target counts.
 
-`src/markdown/canonical.ts` re-serialises a note from markdown-it's token stream rather than
-scraping the rendered DOM, so it stays a pure function and can be unit-tested. Copy offers
-two forms and no more: the source byte for byte, or that canonical rendering.
+Copy offers exactly two forms: the source byte for byte, and plain text.
+`src/markdown/plaintext.ts` produces the second by walking markdown-it's token stream rather
+than scraping the rendered DOM, so it stays a pure function and can be unit-tested.
 
-**The output is Markdown in both cases, and that is the whole design decision.** The first
-version of this shipped a third option that substituted Unicode mathematical alphanumerics
-for emphasis, so text would still *look* bold in a plain box. That was wrong once the actual
-audience was clear: this text is read as often by an LLM agent as by a person. Unicode
-look-alikes shred tokenisation, defeat search and copy, read as gibberish to a screen
-reader, and do not exist at all for Cyrillic or CJK — buying an appearance at the cost of
-everything else. Markdown is what models are trained on hardest and costs a person nothing
-to read, so both options emit it and the styled one was removed rather than demoted.
+**The rule is *markup goes, words stay*.** Every `#`, `**`, backtick and `[](…)` is stripped;
+structure survives as ordinary characters — `•`/`◦` bullets by nesting depth, numbering,
+indentation, `>` quotes, four-space code, `label (url)` links, tables as readable rows, and
+one blank line between blocks. Frontmatter becomes plain `key: value` lines.
 
-What "canonical" buys over the raw source: one bullet character, one emphasis marker, tables
-with a delimiter row that preserves alignment, pipes escaped inside cells, indented code
-promoted to fences, fences widened past any backticks inside them, bare URLs left bare
-rather than becoming `[url](url)`, frontmatter split off before parsing (markdown-it reads
-its fence as two thematic breaks), and one blank line between blocks. It is idempotent.
+Two decisions worth recording, because both were got wrong first:
+
+- **A canonical-Markdown export was the wrong answer.** An earlier version re-serialised to
+  tidy Markdown, which is defensible in the abstract and useless in practice: it is
+  near-identical to the source, so the second option earned nothing. "Text for pasting" has
+  to mean the markers are gone.
+- **Unicode emphasis is not an option at all.** Substituting 𝗯𝗼𝗹𝗱 for **bold** buys an
+  appearance at the cost of tokenisation, search, copy and screen readers, and does not
+  exist for Cyrillic or CJK. Since this text is read as often by an LLM agent as by a
+  person, and both read ordinary characters better than counterfeit glyphs, it is absent
+  rather than merely discouraged — with a test pinning that no character in the
+  mathematical alphanumeric range ever appears.
+
+Headings uppercase, which is the one place words are altered: plain text has no other way to
+mark a heading, and capitals work in every script including Cyrillic. The level distinction
+is lost, which is the price of not inventing punctuation for it.
+
+The export is **not idempotent, by design.** `• one` is a paragraph to a markdown parser, so
+a second pass would flatten the indent that marks nesting. Stripping markup is lossy, and a
+test pins that rather than pretending the output round-trips.
 
 ### Phone layout
 
@@ -325,9 +336,10 @@ save into anyway.
 - **Copy writes plain text only, never `text/html`.** Adding an HTML flavour would make
   rich targets paste with real formatting, but it would also override the plain text in
   boxes that accept both — the opposite of what the feature is for.
-- **Canonical output does not escape stray markdown characters in prose.** A literal `*`
-  that markdown-it handed back as text is re-emitted as-is. It was not markup going in and
-  is not markup coming out, but a contrived document could round-trip differently.
+- **The plain-text export is one-way.** It is not markdown and must not be pasted back into
+  a note; a second pass through it would flatten nesting. Use *Markdown source* for that.
+- **Heading levels do not survive the plain-text export.** Every heading uppercases, so a
+  three-level document reads as a flat one.
 
 ## 11. Risks and how they're handled
 

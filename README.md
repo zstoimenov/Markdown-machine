@@ -52,19 +52,35 @@ person and a post limit count them, so an emoji is one symbol rather than two.
 
 **Copy** in the toolbar gives the open note in one of two forms:
 
-- **Markdown source** — the note exactly as written, byte for byte. For pasting a repaired
+- **Markdown source** — the note exactly as written, markers and all. For pasting a repaired
   note back into wherever the document lives.
-- **Text for pasting** — the note re-serialised as canonical Markdown: one bullet character,
-  one emphasis marker, tables with a proper delimiter row, indented code promoted to fences,
-  consistent blank lines. Whatever shape the note was in, this parses the same way for the
-  next reader.
+- **Text for pasting** — plain text with every marker stripped and the structure kept.
 
-Both come out as Markdown, deliberately. This text is read as often by an LLM agent as by a
-person, and both want the same thing: Markdown is the format models are trained on most
-heavily, and `**bold**` costs a person nothing to read. Faking real bold with Unicode
-look-alikes — 𝗯𝗼𝗹𝗱 instead of **bold** — buys an appearance at the cost of tokenisation,
-search, copy-paste and screen readers, and does not exist at all for Cyrillic or CJK. So
-that option is not offered.
+The rule the plain form follows is *markup goes, words stay*:
+
+| In the note | In the copied text |
+|---|---|
+| `# Heading` | `HEADING` |
+| `**bold**`, `*italic*`, `` `code` `` | the words, unmarked |
+| `- item`, nested | `• item`, `◦ item`, indented |
+| `1. item` | `1. item` |
+| `> quote` | `> quote` |
+| ```` ```code``` ```` | indented four spaces |
+| `[label](url)` | `label (url)` |
+| a table | rows as `cell \| cell` |
+| `---` | `────────` |
+
+Headings are the one place words are altered: plain text has no other way to mark one, and
+capitals work in every script — including Cyrillic, where Unicode has no bold form at all.
+The level distinction is lost, which is the price of not inventing punctuation for it.
+
+Not used, deliberately: Unicode look-alikes for bold (𝗯𝗼𝗹𝗱). They buy an appearance at the
+cost of tokenisation, search, copy and screen readers, and do not exist for Cyrillic or CJK.
+This text is read as often by an LLM agent as by a person, and both read ordinary characters
+doing the structural work far better than they read counterfeit glyphs.
+
+Stripping markup is deliberately lossy, so the plain form is an export, not a round trip —
+paste it where it is going rather than back into a note.
 
 ## Repairing damaged markdown
 

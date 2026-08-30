@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { toCanonicalMarkdown } from '../markdown/canonical';
+import { toPlainText } from '../markdown/plaintext';
 import { countSymbols } from '../markdown/counts';
 import { useVault } from '../state/vaultStore';
 
@@ -39,15 +39,14 @@ const VARIANTS: Array<{ mode: CopyMode; label: string }> = [
 ];
 
 /**
- * Copies the open note, either exactly as written or re-serialised into
- * canonical Markdown.
+ * Copies the open note either exactly as written, markers and all, or as plain
+ * text with the markup stripped and the structure kept.
  *
- * Both come out as Markdown on purpose. The text is read as often by an LLM
- * agent as by a person, and those two want the same thing: Markdown is the
- * format models are trained on hardest, and `**bold**` costs a person nothing
- * to read. Substituting Unicode look-alikes to fake real bold would break
- * tokenisation, search and screen readers to buy an appearance — so that option
- * is gone rather than merely discouraged.
+ * The plain form is read as often by an LLM agent as by a person, and both read
+ * the same thing well: ordinary characters doing the structural work — bullets,
+ * numbering, indentation, blank lines, URLs written out. Unicode look-alikes
+ * for bold are not used; they buy an appearance at the cost of tokenisation,
+ * search and screen readers, and do not exist for Cyrillic at all.
  */
 export function CopyButton() {
   const draft = useVault((s) => s.draft);
@@ -93,7 +92,7 @@ export function CopyButton() {
     const result =
       mode === 'source'
         ? { text: value, symbols: countSymbols(value.trimEnd()) }
-        : toCanonicalMarkdown(value);
+        : toPlainText(value);
 
     const copied = await writeClipboard(result.text);
 
