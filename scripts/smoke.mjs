@@ -679,12 +679,104 @@ check('no horizontal overflow on the splash', await phone.evaluate(() => documen
 await phone.setInputFiles('input[type=file]', {
   name: 'Phone.md',
   mimeType: 'text/markdown',
-  buffer: Buffer.from('# On the phone\n\nBody text.\n\n- one\n- two\n'),
+  buffer: Buffer.from(
+    '# On the phone\n\nBody text.\n\n- one\n- two\n\n' +
+      '```js\nconst wide = ' +
+      "'a line far too long to fit across a phone, so its block scrolls sideways';\n" +
+      '```\n',
+  ),
 });
 await phone.waitForSelector('.prose h1');
 check('a phone lands on the rendered note, not the source', (await phone.locator('.prose h1').innerText()) === 'On the phone');
 check('no horizontal overflow with a note open', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 check('split view is not offered on a phone', (await phone.getByRole('button', { name: 'Split' }).count()) === 0);
+
+// The stored default is `split`, which a phone shows as the rendered note. The
+// toolbar used to highlight the stored mode, so on load neither button looked
+// selected over an app that was plainly in one of the two states.
+check('the toolbar says which state the app is in, on load',
+  (await phone.locator('.segment[aria-pressed="true"]').count()) === 1,
+  await phone.locator('.segmented').innerText());
+check('and it is the one actually on screen',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+
+// ---------- Swipe between writing and reading ----------
+// Playwright's touchscreen only taps, so a drag is dispatched by hand. The
+// events have to carry real Touch objects — TouchEventInit will not take plain
+// ones — and land on the element under the finger rather than on the pane, so
+// that the "did a scroller claim this?" walk has something real to walk up.
+const swipe = async (from, to) => {
+  const box = await phone.locator('.split').boundingBox();
+  const y = Math.round(box.y + box.height / 2);
+  await phone.evaluate(
+    ([x1, x2, yy]) => {
+      const pane = document.querySelector('.split');
+      const target = document.elementFromPoint(x1, yy) ?? pane;
+      const at = (x) => [new Touch({ identifier: 1, target, clientX: x, clientY: yy })];
+      const fire = (type, points) =>
+        target.dispatchEvent(
+          new TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            touches: type === 'touchend' ? [] : points,
+            changedTouches: points,
+            targetTouches: type === 'touchend' ? [] : points,
+          }),
+        );
+      fire('touchstart', at(x1));
+      fire('touchmove', at((x1 + x2) / 2));
+      fire('touchend', at(x2));
+    },
+    [Math.round(box.x + from), Math.round(box.x + to), y],
+  );
+};
+
+await swipe(240, 40); // right to left: forward, to Read... already there
+check('swiping past the last view changes nothing',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+
+await swipe(40, 260); // left to right: back to Write
+await phone.waitForFunction(() => document.querySelector('.cm-editor') !== null);
+check('swiping right goes back to writing',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Write');
+
+await swipe(260, 40); // and forward again
+await phone.waitForFunction(() => document.querySelector('.prose') !== null);
+check('swiping left returns to reading',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+
+// A short drag is a tap that moved, not a swipe.
+await swipe(200, 175);
+check('a short drag is not a swipe',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+
+// A swipe that starts on something which scrolls sideways belongs to that
+// thing. The code block in this note is wider than the screen.
+const pre = await phone.locator('.prose pre').boundingBox();
+check('the code block really does have somewhere to scroll',
+  await phone.locator('.prose pre').evaluate((el) => el.scrollWidth > el.clientWidth + 1));
+const onPre = async (from, to) => {
+  const y = Math.round(pre.y + pre.height / 2);
+  await phone.evaluate(
+    ([x1, x2, yy]) => {
+      const target = document.elementFromPoint(x1, yy);
+      const at = (x) => [new Touch({ identifier: 1, target, clientX: x, clientY: yy })];
+      const fire = (type, points) =>
+        target.dispatchEvent(new TouchEvent(type, {
+          bubbles: true, cancelable: true,
+          touches: type === 'touchend' ? [] : points,
+          changedTouches: points, targetTouches: type === 'touchend' ? [] : points,
+        }));
+      fire('touchstart', at(x1));
+      fire('touchmove', at((x1 + x2) / 2));
+      fire('touchend', at(x2));
+    },
+    [Math.round(pre.x + from), Math.round(pre.x + to), y],
+  );
+};
+await onPre(240, 40);
+check('a swipe across a wide code block scrolls it rather than changing view',
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
 check('the tree is a drawer, hidden until asked for', await phone.evaluate(() => getComputedStyle(document.querySelector('.sidebar')).visibility) === 'hidden');
 
 await phone.getByRole('button', { name: 'Notes' }).tap();
