@@ -35,7 +35,7 @@ const check = (label, ok, detail = '') => {
 await page.goto(`${BASE}/dev-fixture.html`, { waitUntil: 'networkidle' });
 
 // ---------- M1 regressions ----------
-await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.getByRole('treeitem', { name: 'Welcome.md' }).click();
 await page.waitForSelector('.prose h1');
 check('M1: preview still renders', (await page.locator('.prose table tbody tr').count()) === 2);
 check('M1: images still resolve', (await page.locator('.prose img').first().getAttribute('src') || '').startsWith('blob:'));
@@ -117,7 +117,7 @@ await page.locator('.divider').dblclick();
 check('double-click resets the split', Math.abs((await page.locator('.pane-editor').boundingBox()).width - widthBefore) < 2);
 
 // ---------- Scroll sync ----------
-await page.getByRole('button', { name: 'Long.md' }).click();
+await page.getByRole('treeitem', { name: 'Long.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
 await page.waitForTimeout(300);
 
@@ -160,13 +160,13 @@ check('editor → preview keeps the panes on the same block', Boolean(section) &
 await page.screenshot({ path: `${SP}/smoke-scrollsync.png` });
 
 // ---------- Guard ----------
-await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.getByRole('treeitem', { name: 'Welcome.md' }).click();
 await page.waitForSelector('.prose h1');
 await page.locator('.cm-line').first().click();
 await page.keyboard.type('x');
 await page.waitForFunction(() => document.querySelector('.status-save')?.textContent?.includes('unsaved'));
 page.once('dialog', (d) => d.dismiss());
-await page.getByRole('button', { name: 'Long.md' }).click();
+await page.getByRole('treeitem', { name: 'Long.md' }).click();
 await page.waitForTimeout(200);
 check('leaving a modified note asks first, and staying works', (await page.locator('.status-path').innerText()) === 'Welcome.md');
 
@@ -178,9 +178,9 @@ const waitForSaved = () =>
 
 // Reset to a clean note; the guard test above left Welcome.md modified.
 page.once('dialog', (d) => d.accept());
-await page.getByRole('button', { name: 'Long.md' }).click();
+await page.getByRole('treeitem', { name: 'Long.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
-await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.getByRole('treeitem', { name: 'Welcome.md' }).click();
 await page.waitForSelector('.prose h1');
 
 // Autosave
@@ -236,7 +236,7 @@ page.once('dialog', (d) => d.accept('Fresh note'));
 await page.getByRole('button', { name: 'New note' }).click();
 await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Fresh note.md');
 check('a new note is created with a .md extension added', (await fileList()).includes('Fresh note.md'));
-check('the new note opens', await page.getByRole('button', { name: 'Fresh note.md' }).isVisible());
+check('the new note opens', await page.getByRole('treeitem', { name: 'Fresh note.md' }).isVisible());
 
 // Create over an existing name is refused rather than clobbering.
 page.once('dialog', (d) => d.accept('Welcome.md'));
@@ -245,7 +245,7 @@ await page.waitForSelector('.status .is-warn');
 check('creating over an existing note is refused', (await fileText('Welcome.md')).includes('MINE'));
 
 // Rename
-await page.getByRole('button', { name: 'Fresh note.md' }).click();
+await page.getByRole('treeitem', { name: 'Fresh note.md' }).click();
 await page.waitForTimeout(150);
 page.once('dialog', (d) => d.accept('Renamed note.md'));
 await page.getByRole('button', { name: 'Rename' }).click();
@@ -270,7 +270,68 @@ await page.screenshot({ path: `${SP}/smoke-write.png` });
 // The delete above left nothing open, which is when the shortcut sheet shows.
 check('the empty state lists the shortcuts', (await page.locator('.shortcuts kbd').count()) >= 7);
 
-await page.getByRole('button', { name: 'Format.md' }).click();
+// ---------- Keyboard and screen reader ----------
+await page.getByRole('treeitem', { name: 'Welcome.md' }).click();
+await page.waitForSelector('.prose h1');
+
+check('the tree is announced as a tree', (await page.getByRole('tree').count()) === 1);
+check('folders carry their expanded state',
+  (await page.getByRole('treeitem', { name: 'notes' }).getAttribute('aria-expanded')) !== null);
+
+// One tab stop for the whole tree, not one per note: the open note carries it.
+const tabbable = await page.locator('.tree [role="treeitem"][tabindex="0"]').count();
+check('only the open note is in the tab order', tabbable === 1, `${tabbable} rows tabbable`);
+
+// Rows read: notes/ then Broken, Format, Long, Plain, Welcome. Down from the
+// last one correctly does nothing, per the tree pattern, so start higher up.
+await page.getByRole('treeitem', { name: 'Broken.md' }).focus();
+await page.keyboard.press('ArrowDown');
+check('arrows walk the tree',
+  await page.evaluate(() => document.activeElement?.textContent?.includes('Format.md') === true),
+  await page.evaluate(() => document.activeElement?.textContent ?? 'nothing focused'));
+await page.keyboard.press('ArrowUp');
+check('and back up again',
+  await page.evaluate(() => document.activeElement?.textContent?.includes('Broken.md') === true));
+await page.getByRole('treeitem', { name: 'Welcome.md' }).focus();
+await page.keyboard.press('ArrowDown');
+check('and stop at the last row rather than wrapping',
+  await page.evaluate(() => document.activeElement?.textContent?.includes('Welcome.md') === true));
+await page.keyboard.press('Home');
+check('Home reaches the first row',
+  await page.evaluate(() => {
+    const rows = document.querySelectorAll('.tree [role="treeitem"]');
+    return rows[0] === document.activeElement;
+  }));
+
+// The folder is closed to start with; right opens it, left shuts it again.
+await page.getByRole('treeitem', { name: 'notes' }).focus();
+await page.keyboard.press('ArrowRight');
+await page.waitForSelector('[role="treeitem"][data-path="notes/Second.md"]');
+check('right opens a folder', true);
+await page.keyboard.press('ArrowLeft');
+check('left closes it',
+  (await page.locator('[role="treeitem"][data-path="notes/Second.md"]').count()) === 0);
+
+check('every control has a visible focus style',
+  await page.evaluate(() => {
+    const probe = document.querySelector('.tree-row');
+    if (!probe) return false;
+    probe.focus();
+    // :focus-visible only paints for keyboard focus, so check the rule exists
+    // rather than the painted value, which a programmatic focus will not show.
+    return [...document.styleSheets].some((sheet) => {
+      try {
+        return [...sheet.cssRules].some((rule) => rule.selectorText?.includes(':focus-visible'));
+      } catch {
+        return false;
+      }
+    });
+  }));
+
+check('the save state is announced, not only shown',
+  (await page.locator('.status [role="status"][aria-live="polite"]').count()) === 1);
+
+await page.getByRole('treeitem', { name: 'Format.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Format');
 
 const formatLine = () =>
@@ -387,7 +448,7 @@ check('a name already taken is made unique rather than overwritten', (await fall
 await fallback.close();
 
 // ---------- Repairing damaged markdown ----------
-await page.getByRole('button', { name: 'Broken.md' }).click();
+await page.getByRole('treeitem', { name: 'Broken.md' }).click();
 await page.waitForSelector('.notice-repair');
 check('a damaged file is spotted on open', (await page.locator('.notice-repair').innerText()).includes('looks damaged'));
 check('and the offer says what it would do', (await page.locator('.notice-repair').innerText()).includes('JSON'));
@@ -413,12 +474,12 @@ await page.keyboard.press('Control+y');
 await waitForSaved();
 
 // A healthy file is never flagged.
-await page.getByRole('button', { name: 'Long.md' }).click();
+await page.getByRole('treeitem', { name: 'Long.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Scroll sync');
 check('a healthy file is left alone', (await page.locator('.notice-repair').count()) === 0);
 
 // ---------- Symbols counter and copy ----------
-await page.getByRole('button', { name: 'Format.md' }).click();
+await page.getByRole('treeitem', { name: 'Format.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'Format');
 
 const statusText = async () => (await page.locator('.status').innerText()).replace(/\s+/g, ' ');
@@ -461,9 +522,9 @@ await page.evaluate(() =>
     '# T\n\n**Bold** intro.\n\n- one\n  - nested\n\n1. first\n\n> quoted\n\n```js\nconst a = 1;\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n[docs](https://example.com)\n',
   ),
 );
-await page.getByRole('button', { name: 'Welcome.md' }).click();
+await page.getByRole('treeitem', { name: 'Welcome.md' }).click();
 await page.waitForTimeout(150);
-await page.getByRole('button', { name: 'Format.md' }).click();
+await page.getByRole('treeitem', { name: 'Format.md' }).click();
 await page.waitForFunction(() => document.querySelector('.prose h1')?.textContent === 'T');
 
 await page.getByRole('button', { name: 'Copy', exact: true }).click();
@@ -489,7 +550,7 @@ check('markdown source is copied byte for byte', rawClip === (await page.evaluat
 check('so it still carries the markers', rawClip.includes('**Bold**') && rawClip.includes('```js'));
 
 // ---------- Plain text to markdown ----------
-await page.getByRole('button', { name: 'Plain.md' }).click();
+await page.getByRole('treeitem', { name: 'Plain.md' }).click();
 await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Plain.md');
 check('a plain-text note is offered the conversion', await page.getByRole('button', { name: 'Plain → markdown' }).isEnabled());
 
@@ -514,7 +575,7 @@ check('the offer is not made twice', !(await page.getByRole('button', { name: 'P
 await waitForSaved();
 
 // ---------- Suggestions ----------
-await page.getByRole('button', { name: 'Format.md' }).click();
+await page.getByRole('treeitem', { name: 'Format.md' }).click();
 await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Format.md');
 const chips = () => page.locator('.suggest .chip').allInnerTexts();
 const chip = (text) => page.locator('.suggest .chip').filter({ hasText: text }).first();
@@ -559,7 +620,7 @@ check('and brought back', await page.locator('.suggest').isVisible());
 
 // ---------- Converting a paste ----------
 await waitForSaved();
-await page.getByRole('button', { name: 'Long.md' }).click();
+await page.getByRole('treeitem', { name: 'Long.md' }).click();
 await page.waitForFunction(() => document.querySelector('.status-path')?.textContent === 'Long.md');
 await page.locator('.cm-line').first().click();
 await page.keyboard.press('Home');

@@ -21,25 +21,57 @@ function useNow(active: boolean): number {
   return now;
 }
 
+/**
+ * Whether a note has reached the disk is the one thing here worth interrupting
+ * for, so the region is polite rather than assertive — it waits for a pause in
+ * whatever is being read rather than talking over it — and `aria-atomic` so
+ * "not saved — no write access" arrives as a sentence rather than a changed word.
+ *
+ * The elapsed time is deliberately not announced: "saved 4s ago" reworded every
+ * five seconds would be a live region that never stops talking.
+ */
 function SaveState() {
   const saveState = useVault((s) => s.saveState);
   const dirty = useVault(isDirty);
   const canWrite = useVault((s) => s.canWrite);
   const now = useNow(saveState.kind === 'saved');
 
-  if (!canWrite) return <span className="status-save is-warn">read-only</span>;
-  if (saveState.kind === 'saving') return <span className="status-save">saving…</span>;
-  if (saveState.kind === 'conflict') {
-    return <span className="status-save is-warn">changed on disk</span>;
+  let label: React.ReactNode = 'saved';
+  let tone = '';
+  let announce = 'Saved';
+
+  if (!canWrite) {
+    label = 'read-only';
+    tone = ' is-warn';
+    announce = 'This folder is read-only. Nothing will be saved.';
+  } else if (saveState.kind === 'saving') {
+    label = 'saving…';
+    announce = '';
+  } else if (saveState.kind === 'conflict') {
+    label = 'changed on disk';
+    tone = ' is-warn';
+    announce = 'This note changed on disk. Saving is paused until you choose.';
+  } else if (saveState.kind === 'error') {
+    label = <>not saved — {saveState.message}</>;
+    tone = ' is-warn';
+    announce = `Not saved. ${saveState.message}`;
+  } else if (dirty) {
+    label = 'unsaved…';
+    tone = ' is-dirty';
+    announce = '';
+  } else if (saveState.kind === 'saved') {
+    label = `saved ${ago(saveState.at, now)}`;
+    announce = 'Saved';
   }
-  if (saveState.kind === 'error') {
-    return <span className="status-save is-warn">not saved — {saveState.message}</span>;
-  }
-  if (dirty) return <span className="status-save is-dirty">unsaved…</span>;
-  if (saveState.kind === 'saved') {
-    return <span className="status-save">saved {ago(saveState.at, now)}</span>;
-  }
-  return <span className="status-save">saved</span>;
+
+  return (
+    <>
+      <span className={`status-save${tone}`}>{label}</span>
+      <span className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {announce}
+      </span>
+    </>
+  );
 }
 
 export function StatusBar() {
@@ -51,7 +83,15 @@ export function StatusBar() {
   const error = useVault((s) => s.error);
 
   if (!activePath) {
-    return <footer className="status">{error && <span className="is-warn">{error}</span>}</footer>;
+    return (
+      <footer className="status">
+        {error && (
+          <span className="is-warn" role="alert">
+            {error}
+          </span>
+        )}
+      </footer>
+    );
   }
 
   const value = draft ?? source;
@@ -71,7 +111,11 @@ export function StatusBar() {
           </span>
         </>
       )}
-      {error && <span className="is-warn">{error}</span>}
+      {error && (
+        <span className="is-warn" role="alert">
+          {error}
+        </span>
+      )}
       {revertable && (
         <button
           type="button"

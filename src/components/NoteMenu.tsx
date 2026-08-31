@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy.ts';
 import { looksLikeMarkdown } from '../markdown/fromPlainText.ts';
 import { canShareFile } from '../fs/singleFileAdapter.ts';
@@ -18,6 +18,8 @@ import { canRevert, useVault } from '../state/vaultStore.ts';
 export function NoteMenu() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const mode = useVault((s) => s.mode);
   const canWrite = useVault((s) => s.canWrite);
@@ -46,13 +48,70 @@ export function NoteMenu() {
     setMessage(null);
   }, [activePath]);
 
+  /**
+   * Focus goes into the sheet when it opens and back to the ⋯ button when it
+   * closes, and Tab is held inside while it is up.
+   *
+   * Without the first, a keyboard user opening the sheet was still behind the
+   * scrim, tabbing towards a menu they could not see the start of. Without the
+   * last, Tab walked out of a sheet that is visually covering the page and into
+   * the controls underneath it, which is worse than no sheet at all.
+   */
   useEffect(() => {
     if (!open) return;
+    const returnTo = triggerRef.current;
+
+    const items = () =>
+      Array.from(sheetRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])') ?? []);
+
+    items()[0]?.focus();
+
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+
+      const focusable = items();
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      const at = focusable.indexOf(document.activeElement as HTMLElement);
+
+      // This is announced as a menu, so it has to behave like one: arrows move
+      // between the items, and the ends wrap rather than dead-ending.
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        const next = at === -1 ? 0 : (at + step + focusable.length) % focusable.length;
+        focusable[next]?.focus();
+        return;
+      }
+      if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        (event.key === 'Home' ? first : last).focus();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      // The sheet is already gone by the time this runs, and removing the
+      // focused element drops focus to <body>. That is the case worth
+      // rescuing; if a prompt or another note has since taken focus, it is
+      // somewhere more useful than the button that opened this.
+      if (document.activeElement === document.body) returnTo?.focus();
+    };
   }, [open]);
 
   function run(action: () => void | Promise<void>) {
@@ -70,6 +129,7 @@ export function NoteMenu() {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         className="icon-button"
         aria-label="More"
@@ -91,8 +151,12 @@ export function NoteMenu() {
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="sheet" role="menu" aria-label="Note actions">
-            {message !== null && <p className="sheet-message">{message}</p>}
+          <div ref={sheetRef} className="sheet" role="menu" aria-label="Note actions">
+            {message !== null && (
+              <p className="sheet-message" role="status" aria-live="polite">
+                {message}
+              </p>
+            )}
 
             {value !== null && (
               <section className="sheet-group">

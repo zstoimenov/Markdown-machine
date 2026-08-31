@@ -95,7 +95,9 @@ export function CopyButton() {
       {open && (
         <div className="copy-menu" role="menu">
           {message ? (
-            <p className="copy-message">{message}</p>
+            <p className="copy-message" role="status" aria-live="polite">
+              {message}
+            </p>
           ) : (
             COPY_VARIANTS.map(({ mode, label }) => (
               <button key={mode} type="button" role="menuitem" onClick={() => void copy(mode)}>
