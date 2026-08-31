@@ -115,7 +115,14 @@ export function SuggestionBar({
         title="Hide suggestions"
         onClick={() => setHidden(true)}
       >
-        ×
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <path
+            d="M1.2 1.2 9.8 9.8M9.8 1.2 1.2 9.8"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
     </div>
   );

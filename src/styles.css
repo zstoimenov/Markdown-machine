@@ -1,57 +1,90 @@
-/* One palette, defined once, redefined only where the theme changes. */
+/**
+ * Paper and Ink.
+ *
+ * One palette, defined once, redefined only where the theme changes. The design
+ * has no panel fills and no cards: a ground, a hairline, and one accent that
+ * only ever means "this one, here" — the open note, the primary action, the
+ * unsaved state. That is why the dark theme below is a token swap and nothing
+ * else; there is no elevation to re-balance.
+ */
+@import './fonts.css';
+
 :root {
   color-scheme: light dark;
 
-  --bg: #fdfdfc;
-  --bg-panel: #f4f4f2;
-  --bg-raised: #ffffff;
-  --border: #e2e1dd;
-  --border-strong: #cfcec9;
-  --text: #22221f;
-  --text-muted: #6f6e69;
-  --text-faint: #96958f;
-  --accent: #2f6f4f;
-  --accent-contrast: #ffffff;
-  --accent-soft: #e6f0ea;
-  --danger: #a8352a;
-  --code-bg: #f4f4f2;
-  --warn-soft: #fbf0d9;
+  --bg: #f7f4ec;
+  /* The chrome shares the ground on purpose — hairlines separate the panes,
+     not fills. Kept as its own token so a theme could disagree. */
+  --bg-panel: #f7f4ec;
+  --bg-raised: #fffefa;
+  /* Code, chips, the suggestion row: the one step off the ground. */
+  --bg-soft: #efeade;
+  --line-active: #f1ece1;
+  --select: #e7dcc9;
+  --border: #e0d9c9;
+  --border-strong: #c9c0ac;
+  --text: #1f1c17;
+  --text-body: #3b352c;
+  --text-muted: #6d6659;
+  --text-faint: #9b9382;
+  --accent: #8f3b2e;
+  --accent-contrast: #fffefa;
+  --accent-soft: #efeade;
+  --accent-rule: #d8b8ae;
+  --danger: #b02a1a;
+  --code-bg: #efeade;
+  --warn-soft: #f2e7cd;
 
-  --syn-keyword: #8250df;
-  --syn-string: #0a6b47;
-  --syn-number: #953800;
-  --syn-comment: #8b8a84;
-  --syn-title: #0550ae;
-  --syn-attr: #953800;
+  --syn-keyword: #8f3b2e;
+  --syn-string: #4a6b3f;
+  --syn-number: #8a5a20;
+  --syn-comment: #9b9382;
+  --syn-title: #3a5570;
+  --syn-attr: #8a5a20;
 
-  --font-ui: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-prose: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Uppercase, letterspaced, small: the only place a grotesque appears. Loaded
+     at 600 alone, so nothing here may ask for another weight. */
+  --font-label: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-prose: 'Spectral', Georgia, Cambria, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/**
+ * Dark is the same design with the tokens swapped, save for two values that are
+ * not straight mirrors. The accent sits at lightness 0.46, which is nearly the
+ * dark ground itself, so it climbs to 0.70 at the same hue; and an exactly
+ * inverted `--text-faint` would put the small-caps labels below readable, so it
+ * lands lighter than its mirror image. Everything else is a mirror.
+ */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17181a;
-    --bg-panel: #1e1f22;
-    --bg-raised: #232427;
-    --border: #303236;
-    --border-strong: #43454a;
-    --text: #e6e6e3;
-    --text-muted: #a3a39e;
-    --text-faint: #76766f;
-    --accent: #6fbf94;
-    --accent-contrast: #10241a;
-    --accent-soft: #23342b;
-    --danger: #e2857a;
-    --code-bg: #202124;
-    --warn-soft: #3a2f1c;
+    --bg: #191714;
+    --bg-panel: #191714;
+    --bg-raised: #211e1a;
+    --bg-soft: #24211c;
+    --line-active: #1f1c19;
+    --select: #332c22;
+    --border: #322e28;
+    --border-strong: #443f38;
+    --text: #eae4d8;
+    --text-body: #d4cdbe;
+    --text-muted: #a09889;
+    --text-faint: #837c6f;
+    --accent: #d87d5f;
+    --accent-contrast: #231410;
+    --accent-soft: #24211c;
+    --accent-rule: #7a4c3a;
+    --danger: #e28273;
+    --code-bg: #24211c;
+    --warn-soft: #33291a;
 
-    --syn-keyword: #c297f0;
-    --syn-string: #7ec9a4;
-    --syn-number: #e0a072;
-    --syn-comment: #74746e;
-    --syn-title: #79b8ff;
-    --syn-attr: #e0a072;
+    --syn-keyword: #d87d5f;
+    --syn-string: #8fbb78;
+    --syn-number: #d9a663;
+    --syn-comment: #837c6f;
+    --syn-title: #8fb0d4;
+    --syn-attr: #d9a663;
   }
 }
 
@@ -99,6 +132,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The small-caps label that carries every piece of chrome in this design. */
+.label,
+.brand,
+.button,
+.segment,
+.link-button,
+.status,
+kbd,
+.sheet-group h2 {
+  font-family: var(--font-label);
+}
+
 /* ---------- Shell ---------- */
 
 .app {
@@ -114,42 +159,56 @@ body {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  height: 44px;
+  gap: 18px;
+  padding: 0 28px;
+  height: 56px;
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
 }
 
+/* A masthead, so the wordmark is set in the prose face rather than the UI one. */
 .brand {
   margin: 0;
-  font-size: 13px;
+  font-family: var(--font-prose);
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
 }
 
+/* Not a chip. The folder is a subtitle to the wordmark, and it reads as one. */
 .vault-name {
   color: var(--text-muted);
-  font-size: 12px;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg-raised);
+  font-family: var(--font-prose);
+  font-style: italic;
+  font-size: 14px;
   max-width: 40ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* The hairline between the wordmark and the folder it has open. */
+.brand + .vault-name::before {
+  content: '';
+  display: inline-block;
+  vertical-align: -3px;
+  width: 1px;
+  height: 18px;
+  margin-right: 18px;
+  background: var(--border);
+}
+
 .toolbar-actions {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  align-items: baseline;
+  gap: 18px;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 248px) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
 }
@@ -160,7 +219,20 @@ body {
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 26px 0 0;
+}
+
+/* The panel's own heading. It names the panel, not the row of verbs that
+   happens to come first in it — and it matches the tree's own aria-label. */
+.sidebar::before {
+  content: 'Notes';
+  padding: 0 22px 14px;
+  color: var(--text-faint);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 /* The panes scroll, not the shell — otherwise the editor and the preview would
@@ -177,24 +249,30 @@ body {
 
 .reader-empty {
   color: var(--text-faint);
-  padding: 48px 32px;
+  font-family: var(--font-prose);
   font-style: italic;
+  font-size: 17px;
+  padding: 48px 32px;
 }
 
 .status {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 20px;
   flex-wrap: wrap;
-  height: 26px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 28px;
   background: var(--bg-panel);
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 12px;
+  border-top: 1px solid var(--border-strong);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .status-path {
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -207,36 +285,44 @@ body {
 /* ---------- Buttons ---------- */
 
 .button {
-  font: inherit;
-  font-size: 12px;
-  padding: 5px 11px;
-  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 9px 18px;
   border: 1px solid var(--border-strong);
-  background: var(--bg-raised);
+  background: transparent;
   color: var(--text);
   cursor: pointer;
 }
 
 .button:hover {
-  border-color: var(--text-faint);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .button-primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
-  font-size: 13px;
-  padding: 8px 16px;
+  padding: 13px 26px;
+}
+
+.button-primary:hover {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
 }
 
 .button-quiet {
-  background: transparent;
   border-color: transparent;
   color: var(--text-muted);
+  padding: 9px 0;
 }
 
 .button-quiet:hover {
-  border-color: var(--border-strong);
+  border-color: transparent;
+  color: var(--accent);
 }
 
 /* ---------- Splash ---------- */
@@ -248,31 +334,48 @@ body {
   padding: 24px;
 }
 
+/* Set left inside a centred column rather than centred: it reads as a title
+   page, and the button lands where the eye already is. */
 .splash-card {
-  max-width: 46ch;
-  text-align: center;
+  max-width: 560px;
 }
 
 .splash-card h1 {
-  font-size: 20px;
-  margin: 0 0 12px;
+  font-family: var(--font-prose);
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  margin: 0;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .splash-card p {
-  color: var(--text-muted);
-  margin: 0 0 16px;
+  color: var(--text-body);
+  font-family: var(--font-prose);
+  font-size: 18px;
+  line-height: 1.66;
+  text-wrap: pretty;
+  margin: 24px 0 0;
 }
 
 .splash-card .muted {
-  color: var(--text-faint);
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 15.5px;
+  line-height: 1.62;
+}
+
+.splash-actions,
+.splash-card > .button,
+.splash-card > .button-primary {
+  margin-top: 32px;
 }
 
 .splash-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  gap: 12px;
 }
 
 /* ---------- File tree ---------- */
@@ -285,13 +388,16 @@ body {
 .tree-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  padding: 4px 10px 4px 8px;
+  padding: 5px 26px 5px 22px;
   border: 0;
+  /* The open note is marked at the edge rather than filled: a fill would be the
+     only block of colour in a design made of hairlines. */
+  border-left: 2px solid transparent;
   background: none;
-  font: inherit;
-  font-size: 13px;
+  font-family: var(--font-prose);
+  font-size: 14px;
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -301,20 +407,24 @@ body {
 }
 
 .tree-row:hover {
-  background: var(--bg-raised);
+  background: var(--bg-soft);
 }
 
 .tree-row.is-active {
-  background: var(--accent-soft);
-  color: var(--text);
-  font-weight: 500;
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.tree-row[aria-expanded] {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .tree-icon {
-  width: 10px;
+  display: inline-flex;
+  width: 9px;
   flex: none;
   color: var(--text-faint);
-  font-size: 10px;
 }
 
 .tree-name {
@@ -326,7 +436,8 @@ body {
 .tree-hint,
 .tree-empty {
   color: var(--text-faint);
-  font-size: 12px;
+  font-family: var(--font-prose);
+  font-size: 13px;
   font-style: italic;
   margin: 2px 0;
 }
@@ -335,33 +446,40 @@ body {
 
 /* The measure is in rem, not ch: `ch` here would resolve against the 14px UI
    font this element inherits, not the larger serif the prose inside it uses,
-   giving a column noticeably narrower than intended. 40rem is roughly 75
+   giving a column noticeably narrower than intended. 39rem is roughly 70
    characters at the prose size. */
 .preview {
-  max-width: 40rem;
+  max-width: 39rem;
   margin: 0 auto;
-  padding: 40px 32px 96px;
+  padding: 42px 40px 96px;
 }
 
+/* Reference, not content: two hairlines and a row of small caps, so it does not
+   compete with the title under it. */
 .frontmatter {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 20px;
-  margin: 0 0 28px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-panel);
+  gap: 6px 28px;
+  margin: 0 0 30px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-label);
   font-size: 12px;
 }
 
 .frontmatter div {
   display: flex;
-  gap: 6px;
+  gap: 9px;
+  align-items: baseline;
 }
 
 .frontmatter dt {
   color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .frontmatter dd {
@@ -371,9 +489,11 @@ body {
 
 .prose {
   font-family: var(--font-prose);
-  font-size: 17px;
-  line-height: 1.7;
+  font-size: 17.5px;
+  line-height: 1.72;
+  color: var(--text);
   overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .prose > :first-child {
@@ -386,21 +506,23 @@ body {
 .prose h4,
 .prose h5,
 .prose h6 {
-  font-family: var(--font-ui);
-  line-height: 1.25;
-  margin: 1.8em 0 0.6em;
+  font-family: var(--font-prose);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+  margin: 1.7em 0 0.55em;
 }
 
 .prose h1 {
-  font-size: 1.7em;
+  font-size: 1.82em;
 }
 .prose h2 {
-  font-size: 1.35em;
-  padding-bottom: 0.25em;
+  font-size: 1.2em;
+  padding-bottom: 0.35em;
   border-bottom: 1px solid var(--border);
 }
 .prose h3 {
-  font-size: 1.15em;
+  font-size: 1.08em;
 }
 .prose h4,
 .prose h5,
@@ -417,20 +539,25 @@ body {
   margin: 0 0 1.1em;
 }
 
-.prose a {
+.prose a,
+.mm-internal-link {
   color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-rule);
+}
+
+.prose a:hover,
+.mm-internal-link:hover {
+  border-bottom-color: var(--accent);
 }
 
 .mm-internal-link {
-  color: var(--accent);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .prose blockquote {
-  border-left: 3px solid var(--border-strong);
-  padding-left: 1em;
+  border-left: 2px solid var(--accent);
+  padding-left: 1.1em;
   margin-left: 0;
   color: var(--text-muted);
   font-style: italic;
@@ -444,42 +571,38 @@ body {
 
 .prose img {
   max-width: 100%;
-  border-radius: 6px;
 }
 
 .missing-image {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border: 1px dashed var(--border-strong);
-  border-radius: 6px;
   color: var(--text-faint);
-  font-family: var(--font-ui);
-  font-size: 12px;
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.06em;
 }
 
 .prose code {
   font-family: var(--font-mono);
-  font-size: 0.85em;
+  font-size: 0.8em;
   background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.1em 0.35em;
+  border: 0;
+  padding: 0.1em 0.3em;
 }
 
 .prose pre {
   background: var(--code-bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 16px;
+  padding: 15px 18px;
   overflow-x: auto;
 }
 
 .prose pre code {
   background: none;
-  border: 0;
   padding: 0;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.68;
 }
 
 /* Wide content scrolls inside its own box; the page never scrolls sideways. */
@@ -489,19 +612,20 @@ body {
   max-width: 100%;
   overflow-x: auto;
   border-collapse: collapse;
-  font-family: var(--font-ui);
-  font-size: 14px;
+  font-family: var(--font-prose);
+  font-size: 15px;
 }
 
 .prose th,
 .prose td {
   border: 1px solid var(--border);
-  padding: 6px 12px;
+  padding: 7px 14px;
   text-align: left;
 }
 
 .prose th {
-  background: var(--bg-panel);
+  background: var(--bg-soft);
+  font-weight: 600;
 }
 
 .prose li {
@@ -515,11 +639,13 @@ body {
 
 .prose .task-list-item input {
   margin-right: 0.5em;
+  accent-color: var(--accent);
 }
 
 /* ---------- Syntax tokens ---------- */
 /* Mapped from highlight.js class names onto the theme's own variables, so code
-   follows light/dark with everything else instead of fighting a bundled theme. */
+   follows light/dark with everything else instead of fighting a bundled theme.
+   Re-toned to the warm palette: the stock blues read as a different design. */
 
 .hljs-keyword,
 .hljs-selector-tag,
@@ -561,7 +687,6 @@ body {
 .hljs-strong {
   font-weight: 600;
 }
-
 
 /* ---------- Split view ---------- */
 
@@ -625,28 +750,29 @@ body.is-dragging {
   cursor: col-resize;
 }
 
-/* ---------- Segmented control ---------- */
+/* ---------- Mode switch ---------- */
 
+/* Three words and a rule under the current one. A boxed segmented control is
+   the heaviest object in a design otherwise made of hairlines, and this says
+   the same thing. */
 .segmented {
   display: flex;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  overflow: hidden;
+  align-items: baseline;
+  gap: 22px;
+  margin-left: auto;
 }
 
 .segment {
-  font: inherit;
-  font-size: 12px;
-  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0 0 5px;
   border: 0;
-  border-right: 1px solid var(--border-strong);
-  background: var(--bg-raised);
+  border-bottom: 1px solid transparent;
+  background: none;
   color: var(--text-muted);
   cursor: pointer;
-}
-
-.segment:last-child {
-  border-right: 0;
 }
 
 .segment:hover {
@@ -654,15 +780,22 @@ body.is-dragging {
 }
 
 .segment.is-on {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* The row of verbs that follows it keeps its own hairline. */
+.segmented + .toolbar-actions {
+  margin-left: 0;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
 }
 
 /* ---------- Save state ---------- */
 
 .status-save {
   margin-left: auto;
-  color: var(--text-faint);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -670,22 +803,27 @@ body.is-dragging {
   color: var(--accent);
 }
 
-
 /* ---------- Banners ---------- */
 
+/* Full width under the masthead, with the accent on the edge rather than the
+   ground: the band is a fact about this note, and the edge is what marks it. */
 .notice,
 .conflict {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 13px 18px 13px 15px;
+  font-family: var(--font-prose);
+  font-size: 15px;
+  line-height: 1.5;
   border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
   background: var(--accent-soft);
   color: var(--text);
 }
 
+/* The two that pause saving take the warmer ground. */
 .conflict {
   background: var(--warn-soft);
 }
@@ -700,35 +838,49 @@ body.is-dragging {
   margin-left: auto;
 }
 
+.notice .button,
+.conflict .button {
+  font-size: 10px;
+  padding: 8px 16px;
+}
+
+.notice .button-primary,
+.conflict .button-primary {
+  padding: 8px 16px;
+}
+
 /* ---------- Sidebar actions ---------- */
 
 .tree-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  padding: 2px 12px 10px;
-  margin-bottom: 4px;
+  gap: 8px 16px;
+  padding: 0 22px 14px;
+  margin-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .link-button {
-  font: inherit;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   /* A row of verbs wraps between them, never inside one. */
   white-space: nowrap;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: var(--text-muted);
   cursor: pointer;
 }
 
 .link-button:hover:not(:disabled) {
-  text-decoration: underline;
+  color: var(--accent);
 }
 
 .link-button:disabled {
   color: var(--text-faint);
+  opacity: 0.55;
   cursor: default;
 }
 
@@ -736,7 +888,7 @@ body.is-dragging {
   color: var(--danger);
 }
 
-/* ---------- Save state ---------- */
+/* ---------- Warnings ---------- */
 
 .is-warn {
   color: var(--danger);
@@ -746,24 +898,24 @@ body.is-dragging {
   color: var(--danger);
 }
 
-
 /* ---------- Reader mode ---------- */
 
 /* With no editor beside it, the preview can take a measure tuned for reading
    rather than one squeezed into half a window. */
 .pane-preview.is-reader .preview {
-  max-width: 44rem;
-  padding: 64px 40px 30vh;
+  max-width: 43rem;
+  padding: 60px 40px 30vh;
 }
 
 .pane-preview.is-reader .prose {
-  font-size: 18px;
-  line-height: 1.75;
+  font-size: 18.5px;
+  line-height: 1.74;
 }
 
 .pane-loading {
   padding: 24px 20px;
   color: var(--text-faint);
+  font-family: var(--font-prose);
   font-style: italic;
 }
 
@@ -772,13 +924,19 @@ body.is-dragging {
 .empty-state {
   margin: auto;
   padding: 32px;
-  max-width: 34ch;
+  width: 380px;
+  max-width: 100%;
 }
 
 .empty-message {
-  color: var(--text-faint);
+  color: var(--text-muted);
+  font-family: var(--font-prose);
   font-style: italic;
-  margin: 0 0 24px;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0 0 22px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
 }
 
 .shortcuts {
@@ -787,33 +945,47 @@ body.is-dragging {
   color: var(--text-muted);
 }
 
+.shortcuts::before {
+  content: 'While writing';
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .shortcuts div {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 3px 0;
+  gap: 12px;
+  padding: 5px 0;
 }
 
 .shortcuts dt {
   flex: 1;
+  font-family: var(--font-prose);
+  font-size: 14.5px;
+  color: var(--text-body);
 }
 
 .shortcuts dd {
   margin: 0;
   display: flex;
-  gap: 3px;
+  gap: 4px;
 }
 
 kbd {
-  font-family: var(--font-ui);
   font-size: 11px;
+  font-weight: 600;
   line-height: 1.5;
-  min-width: 18px;
+  min-width: 20px;
   text-align: center;
-  padding: 1px 5px;
+  padding: 2px 7px;
   border: 1px solid var(--border-strong);
   border-bottom-width: 2px;
-  border-radius: 4px;
   background: var(--bg-raised);
   color: var(--text-muted);
 }
@@ -827,20 +999,19 @@ kbd {
   gap: 10px;
   padding: 24px;
   border: 1px dashed var(--border-strong);
-  border-radius: 10px;
   color: var(--text-muted);
 }
 
 .dropzone.is-over {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--bg-soft);
 }
 
 .dropzone p {
   margin: 0;
-  font-size: 13px;
+  font-family: var(--font-prose);
+  font-size: 15px;
 }
-
 
 /* ---------- Repair banner ---------- */
 
@@ -861,18 +1032,24 @@ kbd {
 
 /* ---------- Touch and small screens ---------- */
 
+/* Borderless: a boxed icon is another object in a design that has almost none.
+   The 44px square is the target, not the drawing inside it. */
 .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
-  font-size: 16px;
-  line-height: 1;
-  width: 36px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   flex: none;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--bg-raised);
+  border: 0;
+  background: none;
   color: var(--text);
   cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--accent);
 }
 
 .scrim {
@@ -881,7 +1058,7 @@ kbd {
   z-index: 19;
   border: 0;
   padding: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(31 28 23 / 42%);
   cursor: pointer;
 }
 
@@ -898,13 +1075,15 @@ kbd {
     left: 0;
     z-index: 20;
     width: min(78vw, 300px);
-    padding-top: 12px;
+    padding-top: 20px;
+    background: var(--bg-raised);
+    border-right: 1px solid var(--border-strong);
     visibility: hidden;
     transform: translateX(-100%);
     transition:
       transform 0.18s ease,
       visibility 0.18s;
-    box-shadow: 0 0 24px rgb(0 0 0 / 25%);
+    box-shadow: 6px 0 28px rgb(31 28 23 / 22%);
   }
 
   .sidebar.is-open {
@@ -913,8 +1092,9 @@ kbd {
   }
 
   .toolbar {
-    gap: 8px;
-    padding: 0 8px;
+    gap: 10px;
+    padding: 0 6px 0 4px;
+    height: 44px;
   }
 
   /* The wordmark is the first thing to go; which note this is, is the useful one
@@ -923,33 +1103,49 @@ kbd {
     display: none;
   }
 
-  /* Not a chip any more — it is the title of the page you are on, so it reads
-     as one and takes the room the buttons leave. */
+  /* Not a subtitle any more — it is the title of the page you are on. */
   .vault-name {
     flex: 1;
     min-width: 0;
     max-width: none;
-    padding: 0;
-    border: 0;
-    background: none;
-    font-size: 14px;
-    font-weight: 500;
+    font-style: normal;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text);
+  }
+
+  .brand + .vault-name::before {
+    display: none;
+  }
+
+  .segmented {
+    gap: 13px;
+    margin-left: 0;
+  }
+
+  .segmented + .toolbar-actions {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .toolbar-actions {
+    gap: 0;
   }
 
   /* Comfortable thumb targets, and no iOS zoom-on-focus at 16px. */
   .tree-row {
-    padding: 10px 12px;
+    padding: 0 18px;
+    height: 44px;
     font-size: 15px;
   }
 
-  .link-button {
-    padding: 6px 0;
-    font-size: 13px;
+  .tree-actions {
+    padding: 0 18px 14px;
   }
 
-  .segment {
-    padding: 8px 14px;
+  .link-button {
+    padding: 8px 0;
+    font-size: 11px;
   }
 
   .divider {
@@ -957,11 +1153,11 @@ kbd {
   }
 
   .preview {
-    padding: 24px 18px 30vh;
+    padding: 26px 20px 30vh;
   }
 
   .pane-preview.is-reader .preview {
-    padding: 28px 18px 30vh;
+    padding: 28px 20px 30vh;
   }
 
   .prose,
@@ -977,7 +1173,7 @@ kbd {
   .conflict {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 10px;
   }
 
   .notice-actions,
@@ -993,24 +1189,33 @@ kbd {
      phone: there is no Mod key, and `|` is three taps into the keyboard. */
   .chip {
     font-size: 13px;
-    padding: 9px 12px;
+    padding: 0 14px;
+    height: 44px;
   }
 
   .suggest {
-    min-height: 44px;
+    min-height: 56px;
   }
 
   /* Room for the gesture bar, so the status bar is not sitting under it. */
   .status {
     height: auto;
-    min-height: 30px;
-    padding: 4px 10px calc(4px + env(safe-area-inset-bottom));
+    min-height: 34px;
+    padding: 4px 16px calc(4px + env(safe-area-inset-bottom));
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 14px;
   }
 
   .empty-state {
     padding: 24px 20px;
+  }
+
+  .splash-card h1 {
+    font-size: 34px;
+  }
+
+  .splash-card p {
+    font-size: 17px;
   }
 }
 
@@ -1018,6 +1223,10 @@ kbd {
 @media (max-width: 420px) {
   .status-path {
     max-width: 14ch;
+  }
+
+  .segmented {
+    gap: 10px;
   }
 }
 
@@ -1028,7 +1237,6 @@ kbd {
   }
 }
 
-
 /* ---------- Copy menu ---------- */
 
 .copy {
@@ -1037,31 +1245,33 @@ kbd {
 
 .copy-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   right: 0;
   z-index: 30;
-  width: max(190px, 100%);
-  max-width: min(260px, calc(100vw - 24px));
-  padding: 4px;
+  width: max(230px, 100%);
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 0;
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
   background: var(--bg-raised);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  box-shadow: 0 8px 22px rgb(31 28 23 / 12%);
 }
 
 .copy-menu button {
   display: flex;
   align-items: baseline;
   width: 100%;
-  padding: 9px 10px;
-  font-size: 13px;
+  padding: 12px 15px;
+  font-family: var(--font-prose);
+  font-size: 15px;
   border: 0;
-  border-radius: 6px;
   background: none;
-  font: inherit;
   text-align: left;
   color: var(--text);
   cursor: pointer;
+}
+
+.copy-menu button + button {
+  border-top: 1px solid var(--border);
 }
 
 .copy-menu button span {
@@ -1072,22 +1282,26 @@ kbd {
 .copy-menu button small {
   flex: none;
   margin-left: 14px;
-  font-size: 11px;
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
 
 .copy-menu button:hover {
-  background: var(--accent-soft);
+  background: var(--bg-soft);
 }
 
 .copy-message {
   margin: 0;
-  padding: 10px;
-  font-size: 12px;
+  padding: 15px;
+  font-family: var(--font-prose);
+  font-style: italic;
+  font-size: 14.5px;
   color: var(--text-muted);
 }
-
 
 /* ---------- Suggestions ---------- */
 
@@ -1097,23 +1311,22 @@ kbd {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 5px 8px;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px 6px 18px;
   border-top: 1px solid var(--border);
-  background: var(--bg-panel);
+  background: var(--bg-soft);
 }
 
 .suggest.is-collapsed {
   justify-content: flex-start;
-  padding: 5px 12px;
 }
 
 /* Wider than the pane on a phone, so the row scrolls rather than wrapping and
    pushing the editor about as the suggestions change. */
 .suggest-chips {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   flex: 1;
   min-width: 0;
   overflow-x: auto;
@@ -1126,13 +1339,15 @@ kbd {
 
 .chip {
   flex: none;
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1;
-  padding: 7px 10px;
+  padding: 0 11px;
+  height: 30px;
   white-space: nowrap;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
   background: var(--bg-raised);
   color: var(--text);
   cursor: pointer;
@@ -1145,13 +1360,13 @@ kbd {
 
 .suggest-hide {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
-  font-size: 15px;
-  line-height: 1;
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
   background: none;
   color: var(--text-faint);
   cursor: pointer;
@@ -1159,7 +1374,6 @@ kbd {
 
 .suggest-hide:hover {
   color: var(--text);
-  background: var(--bg-raised);
 }
 
 /* ---------- Convert-on-paste banner ---------- */
@@ -1171,7 +1385,6 @@ kbd {
   border-top: 1px solid var(--border);
   border-bottom: 0;
 }
-
 
 /* ---------- The phone, while writing ---------- */
 
@@ -1193,7 +1406,6 @@ body.is-keyboard .app > .notice {
   flex: none;
   width: 7px;
   height: 7px;
-  margin-left: -6px;
   border-radius: 50%;
   background: var(--accent);
 }
@@ -1205,7 +1417,9 @@ body.is-keyboard .app > .notice {
 /* ---------- Bottom sheet ---------- */
 
 /* Up from the bottom, not down from the corner: the top-right of a phone is the
-   one place a thumb holding it cannot reach. */
+   one place a thumb holding it cannot reach. Square, with the accent as a rule
+   across the top — the one radius in the design would be this one, and it does
+   not need it. */
 .sheet {
   position: fixed;
   z-index: 21;
@@ -1214,11 +1428,10 @@ body.is-keyboard .app > .notice {
   bottom: 0;
   max-height: 78%;
   overflow-y: auto;
-  padding: 6px 0 calc(10px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
-  border-radius: 14px 14px 0 0;
+  padding: 0 0 calc(12px + env(safe-area-inset-bottom));
+  border-top: 2px solid var(--accent);
   background: var(--bg-raised);
-  box-shadow: 0 -8px 32px rgb(0 0 0 / 22%);
+  box-shadow: 0 -8px 32px rgb(31 28 23 / 20%);
   animation: sheet-in 0.16s ease-out;
 }
 
@@ -1236,7 +1449,7 @@ body.is-keyboard .app > .notice {
 }
 
 .sheet-group {
-  padding: 4px 0 8px;
+  padding: 0 0 8px;
 }
 
 .sheet-group + .sheet-group {
@@ -1244,11 +1457,11 @@ body.is-keyboard .app > .notice {
 }
 
 .sheet-group h2 {
-  margin: 8px 0 2px;
-  padding: 0 18px;
-  font-size: 11px;
+  margin: 16px 0 4px;
+  padding: 0 20px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
@@ -1256,7 +1469,7 @@ body.is-keyboard .app > .notice {
 .sheet-group button {
   display: block;
   width: 100%;
-  padding: 11px 18px;
+  padding: 11px 20px;
   border: 0;
   background: none;
   font: inherit;
@@ -1275,18 +1488,21 @@ body.is-keyboard .app > .notice {
 }
 
 .sheet-group button:active:not(:disabled) {
-  background: var(--bg-panel);
+  background: var(--bg-soft);
 }
 
 .sheet-group button span {
   display: block;
-  font-size: 15px;
+  font-family: var(--font-prose);
+  font-size: 16px;
 }
 
 .sheet-group button small {
   display: block;
-  margin-top: 1px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--text-muted);
 }
 
@@ -1296,17 +1512,21 @@ body.is-keyboard .app > .notice {
 
 .notice-dismiss {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: auto;
   width: 28px;
   height: 28px;
   font: inherit;
-  font-size: 16px;
-  line-height: 1;
   border: 0;
-  border-radius: 6px;
   background: none;
   color: var(--text-muted);
   cursor: pointer;
+}
+
+.notice-dismiss:hover {
+  color: var(--text);
 }
 
 .status-notice {
@@ -1317,11 +1537,12 @@ body.is-keyboard .app > .notice {
 }
 
 .sheet-message {
-  margin: 4px 0 8px;
-  padding: 10px 18px;
-  font-size: 13px;
+  margin: 0;
+  padding: 12px 20px;
+  font-family: var(--font-prose);
+  font-size: 14.5px;
   color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--bg-soft);
 }
 
 /* ---------- Focus ---------- */
@@ -1337,17 +1558,15 @@ body.is-keyboard .app > .notice {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 3px;
 }
 
 /* Rows are flush to the sidebar edge, where an outset ring would be clipped. */
 .tree-row:focus-visible,
 .sheet button:focus-visible {
   outline-offset: -2px;
-  border-radius: 0;
 }
 
-/* The divider is 6px wide, so an offset ring reads as a stripe beside it. */
+/* The divider is 5px wide, so an offset ring reads as a stripe beside it. */
 .divider:focus-visible {
   outline-offset: -2px;
 }
