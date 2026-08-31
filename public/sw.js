@@ -40,6 +40,10 @@ async function precache() {
   for (const [, asset] of Object.entries(await buildFiles(shell))) {
     if (asset.file) files.add(new URL(asset.file, shell).href);
     for (const css of asset.css ?? []) files.add(new URL(css, shell).href);
+    // What the CSS itself pulls in — the self-hosted faces. Without this they
+    // are cached at runtime and then swept by forgetOldBuilds below, which only
+    // spares hashed assets it has been told about.
+    for (const file of asset.assets ?? []) files.add(new URL(file, shell).href);
   }
   // A build with no manifest still leaves its shell naming what the page needs.
   if (files.size === 0) {

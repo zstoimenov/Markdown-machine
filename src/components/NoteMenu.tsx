@@ -140,7 +140,11 @@ export function NoteMenu() {
           setOpen(!open);
         }}
       >
-        ⋯
+        <svg width="17" height="5" viewBox="0 0 17 5" fill="none" aria-hidden="true">
+          <circle cx="2.2" cy="2.5" r="1.6" fill="currentColor" />
+          <circle cx="8.5" cy="2.5" r="1.6" fill="currentColor" />
+          <circle cx="14.8" cy="2.5" r="1.6" fill="currentColor" />
+        </svg>
       </button>
 
       {open && (

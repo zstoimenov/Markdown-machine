@@ -21,19 +21,31 @@ const theme = EditorView.theme({
   '.cm-scroller': {
     fontFamily: 'var(--font-mono)',
     fontSize: '13.5px',
-    lineHeight: '1.7',
+    lineHeight: '1.85',
     overflow: 'auto',
     // Hitting the top of the document must not hand the swipe to the browser,
     // which reads it as a reload — see the overscroll rules in styles.css.
     overscrollBehavior: 'contain',
   },
-  '.cm-content': { padding: '24px 20px 60vh', caretColor: 'var(--text)' },
+  /**
+   * A measure, the same argument the preview already makes: a line of monospace
+   * as wide as the window is not one anybody reads back. `auto` margins rather
+   * than padding, so the column centres in whatever the pane happens to be.
+   */
+  '.cm-content': {
+    padding: '34px 20px 60vh',
+    maxWidth: '42rem',
+    margin: '0 auto',
+    caretColor: 'var(--text)',
+  },
   '.cm-line': { padding: '0 2px' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--text)', borderLeftWidth: '2px' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
-    backgroundColor: 'var(--accent-soft)',
+    backgroundColor: 'var(--select)',
   },
-  '.cm-activeLine': { backgroundColor: 'var(--bg-panel)' },
+  // The chrome shares the ground in this theme, so the active line needs a tint
+  // of its own rather than the panel colour it used to borrow.
+  '.cm-activeLine': { backgroundColor: 'var(--line-active)' },
 
   // The find panel ships with its own light chrome, which reads as a hole in the
   // page under a dark theme. Same custom properties as everything else, so it
@@ -53,8 +65,8 @@ const theme = EditorView.theme({
     color: 'var(--text)',
     backgroundColor: 'var(--bg-raised)',
     border: '1px solid var(--border-strong)',
-    borderRadius: '5px',
-    padding: '4px 8px',
+    borderRadius: '0',
+    padding: '5px 9px',
     margin: '0 4px 0 0',
   },
   '.cm-panel.cm-search input:focus-visible, .cm-panel.cm-search button:focus-visible': {
@@ -68,16 +80,16 @@ const theme = EditorView.theme({
     // The default sits half outside the panel and is hard to hit on a phone.
     padding: '2px 8px',
   },
-  '.cm-searchMatch': { backgroundColor: 'var(--accent-soft)' },
+  '.cm-searchMatch': { backgroundColor: 'var(--select)' },
   '.cm-searchMatch.cm-searchMatch-selected': {
     backgroundColor: 'var(--accent)',
     color: 'var(--accent-contrast)',
   },
-  '.cm-selectionMatch': { backgroundColor: 'var(--accent-soft)' },
+  '.cm-selectionMatch': { backgroundColor: 'var(--select)' },
 });
 
 const highlightStyle = HighlightStyle.define([
-  { tag: tags.heading, color: 'var(--syn-title)', fontWeight: '600' },
+  { tag: tags.heading, color: 'var(--accent)', fontWeight: '600' },
   { tag: tags.strong, color: 'var(--text)', fontWeight: '600' },
   { tag: tags.emphasis, color: 'var(--text)', fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
@@ -85,7 +97,8 @@ const highlightStyle = HighlightStyle.define([
   { tag: tags.url, color: 'var(--text-faint)' },
   { tag: tags.monospace, color: 'var(--syn-string)' },
   { tag: tags.quote, color: 'var(--text-muted)', fontStyle: 'italic' },
-  { tag: tags.list, color: 'var(--syn-keyword)' },
+  // The markers recede behind the words, the same as every other bit of syntax.
+  { tag: tags.list, color: 'var(--text-faint)' },
   // The syntax characters themselves — #, *, -, ``` — recede behind the prose.
   { tag: tags.processingInstruction, color: 'var(--text-faint)' },
   { tag: tags.contentSeparator, color: 'var(--text-faint)' },

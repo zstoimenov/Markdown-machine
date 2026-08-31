@@ -41,7 +41,17 @@ function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
         onClick={() => void (isDir ? toggleDir(entry.path) : openFile(entry.path))}
       >
         <span className="tree-icon" aria-hidden="true">
-          {isDir ? (expanded ? '▾' : '▸') : '·'}
+          {isDir && (
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+              <path
+                d={expanded ? 'M1.2 2.5 4.5 6.4 7.8 2.5' : 'M2.5 1.2 6.4 4.5 2.5 7.8'}
+                stroke="currentColor"
+                strokeWidth="1.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </span>
         <span className="tree-name">{entry.name}</span>
         {loading && <span className="tree-hint">…</span>}

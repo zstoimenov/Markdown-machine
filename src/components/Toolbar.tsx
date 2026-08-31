@@ -59,7 +59,14 @@ export function Toolbar() {
           aria-expanded={sidebarOpen}
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
-          ☰
+          <svg width="17" height="13" viewBox="0 0 17 13" fill="none" aria-hidden="true">
+            <path
+              d="M0.8 1.2h15.4M0.8 6.5h15.4M0.8 11.8h15.4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
         </button>
       )}
       <h1 className="brand">Markdown Machine</h1>
