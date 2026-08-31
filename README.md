@@ -301,6 +301,11 @@ three things in a toolbar and, while you are writing, for one — the words — 
   does.
 - The split view collapses to a single pane that lands on the rendered note, and touch
   targets and the editor's type size are sized for a thumb.
+- **Swipe between writing and reading**, left for one and right for the other, as well as
+  tapping. A swipe that starts on something which scrolls sideways — a wide code block, a
+  table, the suggestion row — belongs to that thing and is left to it, and a slow drag is
+  taken for a text selection rather than a gesture. The toolbar says which of the two you
+  are in, from the moment the note opens.
 - **A stray swipe cannot reload the app.** Pull-to-refresh is off, and no pane hands the
   gesture up to the browser when you reach the end of it. A reload in the middle of writing is
   the worst thing this app can do to you — on the folder path it drops the permission too, so

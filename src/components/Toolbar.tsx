@@ -4,6 +4,7 @@ import { canShareFile } from '../fs/saveOut.ts';
 import { CopyButton } from './CopyButton.tsx';
 import { NoteMenu } from './NoteMenu.tsx';
 import { isDirty, useVault, type ViewMode } from '../state/vaultStore.ts';
+import { useViewMode } from '../hooks/useViewMode.ts';
 
 const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
   { mode: 'editor', label: 'Write', hint: 'Editor only' },
@@ -34,7 +35,11 @@ export function Toolbar() {
   const setSidebarOpen = useVault((s) => s.setSidebarOpen);
   const vaultName = useVault((s) => s.vaultName);
   const activePath = useVault((s) => s.activePath);
-  const viewMode = useVault((s) => s.viewMode);
+  // What is on screen, not what is stored. On a phone the stored `split` shows
+  // as the rendered note, and highlighting `split` — which is not even offered
+  // there — left both buttons looking off over an app that was plainly in one
+  // of the two states.
+  const viewMode = useViewMode();
   const setViewMode = useVault((s) => s.setViewMode);
   const mode = useVault((s) => s.mode);
   const pick = useVault((s) => s.pick);

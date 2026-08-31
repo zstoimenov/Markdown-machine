@@ -1,8 +1,10 @@
-import { Suspense, lazy, useCallback, useDeferredValue, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useDeferredValue, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useVault } from '../state/vaultStore.ts';
 import { useIsNarrow } from '../hooks/useMediaQuery.ts';
 import { useScrollSync } from '../hooks/useScrollSync.ts';
+import { swipeTarget, useViewMode } from '../hooks/useViewMode.ts';
+import { useHorizontalSwipe } from '../hooks/useSwipe.ts';
 /**
  * CodeMirror is the single heaviest thing this app loads, and nothing needs it
  * until a note is actually opened — the folder splash and the reading path
@@ -31,13 +33,11 @@ export function Workspace({ path, source }: { path: string; source: string }) {
   const draft = useVault((s) => s.draft);
   const revision = useVault((s) => s.revision);
   const setDraft = useVault((s) => s.setDraft);
-  const stored = useVault((s) => s.viewMode);
   const narrow = useIsNarrow();
-  // Resizing a desktop window down must not leave two unreadable columns, so the
-  // effective mode is derived rather than written back over the stored choice.
-  // A phone lands on the rendered note rather than the source: reading is what
-  // most phone visits are for, and on Android the file cannot be saved anyway.
-  const viewMode = narrow && stored === 'split' ? 'preview' : stored;
+  // Derived in one place and read here and in the toolbar — see useViewMode.
+  const viewMode = useViewMode();
+  const setViewMode = useVault((s) => s.setViewMode);
+  const sidebarOpen = useVault((s) => s.sidebarOpen);
 
   const [view, setView] = useState<EditorView | null>(null);
   const [context, setContext] = useState<SuggestContext | null>(null);
@@ -45,7 +45,27 @@ export function Workspace({ path, source }: { path: string; source: string }) {
   const setEditorView = useVault((s) => s.setEditorView);
   const [previewPane, setPreviewPane] = useState<HTMLElement | null>(null);
   const [editorPercent, setEditorPercent] = useState(50);
-  const splitRef = useRef<HTMLDivElement>(null);
+  const [splitPane, setSplitPane] = useState<HTMLDivElement | null>(null);
+
+  /**
+   * Swipe between writing and reading, on a phone.
+   *
+   * Only where the views are exclusive: in the split view both panes are already
+   * on screen, and a gesture that swapped which of two visible things was
+   * "current" would mean nothing. Not while the drawer is open either — a swipe
+   * over a note that is behind a scrim is aimed at the scrim.
+   */
+  useHorizontalSwipe(
+    splitPane,
+    useCallback(
+      (direction: 'left' | 'right') => {
+        const to = swipeTarget(viewMode, direction);
+        if (to !== null) setViewMode(to);
+      },
+      [viewMode, setViewMode],
+    ),
+    narrow && !sidebarOpen,
+  );
 
   const value = draft ?? source;
   // Typing stays responsive on long documents: the preview re-renders at a lower
@@ -67,13 +87,15 @@ export function Workspace({ path, source }: { path: string; source: string }) {
     document.body.classList.add('is-dragging');
   }, []);
 
-  const onDrag = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const split = splitRef.current;
-    if (!split || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    const box = split.getBoundingClientRect();
-    const percent = ((event.clientX - box.left) / box.width) * 100;
-    setEditorPercent(Math.min(100 - MIN_PANE_PERCENT, Math.max(MIN_PANE_PERCENT, percent)));
-  }, []);
+  const onDrag = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!splitPane || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+      const box = splitPane.getBoundingClientRect();
+      const percent = ((event.clientX - box.left) / box.width) * 100;
+      setEditorPercent(Math.min(100 - MIN_PANE_PERCENT, Math.max(MIN_PANE_PERCENT, percent)));
+    },
+    [splitPane],
+  );
 
   const endDrag = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -87,7 +109,7 @@ export function Workspace({ path, source }: { path: string; source: string }) {
   const split = viewMode === 'split';
 
   return (
-    <div className="split" ref={splitRef}>
+    <div className="split" ref={setSplitPane}>
       {showEditor && (
         <div className="pane pane-editor" style={split ? { width: `${editorPercent}%` } : undefined}>
           {/* The revision changes when the buffer is replaced from outside the
