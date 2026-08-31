@@ -294,6 +294,14 @@ three things in a toolbar and, while you are writing, for one — the words — 
   does.
 - The split view collapses to a single pane that lands on the rendered note, and touch
   targets and the editor's type size are sized for a thumb.
+- **A stray swipe cannot reload the app.** Pull-to-refresh is off, and no pane hands the
+  gesture up to the browser when you reach the end of it. A reload in the middle of writing is
+  the worst thing this app can do to you — on the folder path it drops the permission too, so
+  what looked like a scroll ends at the "Welcome back" screen.
+- **A reload that happens anyway costs less.** Whichever note was open is open again. Only the
+  path is remembered, not a draft: autosave has already put the text in the file, and
+  restoring a stale draft over a file that moved on since is the conflict problem invented
+  twice.
 
 ## Running it
 

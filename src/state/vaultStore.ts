@@ -11,6 +11,7 @@ import {
 import type { EditorView } from '@codemirror/view';
 import { canShareFile, downloadText, shareText } from '../fs/singleFileAdapter';
 import { deviceNoteCount, importFile, openDeviceVault } from '../fs/deviceAdapter';
+import { recallNote, rememberNote } from '../fs/handleStore';
 import { diagnose, repair, type RepairIssue } from '../markdown/repair';
 import { toMarkdown } from '../markdown/fromPlainText';
 import {
@@ -169,6 +170,14 @@ export const useVault = create<VaultState>((set, get) => {
       saveState: { kind: 'idle' },
       error: null,
     });
+
+    // Back to whatever was open. A reload is rarely something anyone chose —
+    // a stray swipe, a discarded tab, a permission that lapsed — and landing on
+    // an empty pane makes it cost more than it needs to.
+    const last = await recallNote(adapter.name);
+    if (last !== null && roots.some((entry) => entry.path === last)) {
+      await load(last);
+    }
   }
 
   /** Re-read one directory after it changes on disk. */
@@ -188,6 +197,7 @@ export const useVault = create<VaultState>((set, get) => {
     const { adapter } = get();
     if (!adapter) return;
     set({ activePath: path, loadingFile: true, source: null, draft: null, error: null });
+    void rememberNote(get().vaultName ?? '', path);
     try {
       const { text, modifiedAt } = await adapter.readFile(path);
       // Guard against a slow read landing after the user clicked elsewhere.
@@ -307,6 +317,7 @@ export const useVault = create<VaultState>((set, get) => {
      */
     async close() {
       await forgetVault();
+      await rememberNote('', null);
       set({
         status: isSupported() ? 'empty' : 'unsupported',
         adapter: null,

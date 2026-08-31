@@ -462,6 +462,26 @@ on someone's behalf, so the notice states the position — home screen, keep cop
 `navigator.storage.persist()` is requested, after which the notice stops warning about a clock
 that no longer applies.
 
+### The swipe that reloads the app
+
+A downward swipe near the top of an Android screen is a page reload, and a reload in the middle
+of writing is the worst thing this app can do to someone. Autosave means the text is usually
+safe, but the session is not: on the folder path the permission goes with it, so a gesture that
+felt like a scroll ends at "Welcome back".
+
+`overscroll-behavior: none` on both `html` and `body` — `none` rather than `contain` because
+the two differ on whether the gesture's own effect survives and the reports disagree about
+which still fires the refresh, and because the overscroll glow is a small thing to trade for
+never losing a paragraph. Both elements, since Chrome honours it on the body and Safari on the
+root. The panes and the editor's scroller take `contain`, so reaching the end of one is the end
+of the gesture rather than the start of one for the viewport behind it.
+
+The second half is making a reload cheap when it happens anyway — a crash, a discarded tab, a
+lapsed permission. The note that was open is opened again. Only its path is remembered: the
+text is the file's business and autosave has already put it there, and restoring a draft from
+before a reload would mean deciding what to do when the file has moved on since, which is the
+conflict problem invented a second time and worse.
+
 ## 10. Known issues
 
 - **Notes on the device are not a backup.** They survive a reload and a discarded tab, which
