@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { countSymbols, countWords } from '../markdown/counts';
-import { canRevert, isDirty, useVault } from '../state/vaultStore';
+import { countSymbols, countWords } from '../markdown/counts.ts';
+import { canRevert, isDirty, useVault } from '../state/vaultStore.ts';
 
 function ago(from: number, now: number): string {
   const seconds = Math.max(0, Math.round((now - from) / 1000));

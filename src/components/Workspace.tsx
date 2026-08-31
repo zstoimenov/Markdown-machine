@@ -1,19 +1,19 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { useVault } from '../state/vaultStore';
-import { useIsNarrow } from '../hooks/useMediaQuery';
-import { useScrollSync } from '../hooks/useScrollSync';
+import { useVault } from '../state/vaultStore.ts';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { useScrollSync } from '../hooks/useScrollSync.ts';
 /**
  * CodeMirror is the single heaviest thing this app loads, and nothing needs it
  * until a note is actually opened — the folder splash and the reading path
  * never touch it. Splitting it out keeps it off the critical path.
  */
-const Editor = lazy(() => import('./Editor').then((module) => ({ default: module.Editor })));
-import type { PasteOffer } from './Editor';
-import { ConvertOffer } from './ConvertOffer';
-import { SuggestionBar } from './SuggestionBar';
-import type { SuggestContext } from '../markdown/suggest';
-import { Preview } from './Preview';
+const Editor = lazy(() => import('./Editor.tsx').then((module) => ({ default: module.Editor })));
+import type { PasteOffer } from './Editor.tsx';
+import { ConvertOffer } from './ConvertOffer.tsx';
+import { SuggestionBar } from './SuggestionBar.tsx';
+import type { SuggestContext } from '../markdown/suggest.ts';
+import { Preview } from './Preview.tsx';
 
 const MIN_PANE_PERCENT = 20;
 

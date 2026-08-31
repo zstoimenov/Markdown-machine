@@ -1,4 +1,4 @@
-import { baseName, type FileSnapshot, type TreeEntry, type VaultAdapter } from './types';
+import { baseName, type FileSnapshot, type TreeEntry, type VaultAdapter } from './types.ts';
 
 /**
  * The degradation path for browsers without the File System Access API —
@@ -10,10 +10,14 @@ import { baseName, type FileSnapshot, type TreeEntry, type VaultAdapter } from '
  * genuinely worse experience, which is why it is the fallback and not the design.
  */
 class SingleFileVault implements VaultAdapter {
-  constructor(private readonly file: File) {}
+  readonly #file: File;
+
+  constructor(file: File) {
+    this.#file = file;
+  }
 
   get name(): string {
-    return this.file.name;
+    return this.#file.name;
   }
 
   /** Always false. There is nowhere to write to, not merely no permission yet. */
@@ -27,12 +31,12 @@ class SingleFileVault implements VaultAdapter {
 
   async listDir(path: string): Promise<TreeEntry[]> {
     if (path !== '') return [];
-    return [{ name: this.file.name, path: this.file.name, kind: 'file' }];
+    return [{ name: this.#file.name, path: this.#file.name, kind: 'file' }];
   }
 
   async readFile(path: string): Promise<FileSnapshot> {
-    if (path !== this.file.name) throw new Error(`Not open: "${path}"`);
-    return { text: await this.file.text(), modifiedAt: this.file.lastModified };
+    if (path !== this.#file.name) throw new Error(`Not open: "${path}"`);
+    return { text: await this.#file.text(), modifiedAt: this.#file.lastModified };
   }
 
   async readBinary(): Promise<Blob> {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
-import { useVault } from '../state/vaultStore';
+import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy.ts';
+import { useVault } from '../state/vaultStore.ts';
 
 /**
  * Copies the open note either exactly as written, markers and all, or as plain

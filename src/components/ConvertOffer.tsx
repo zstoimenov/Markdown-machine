@@ -1,7 +1,7 @@
 import { EditorSelection } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { toMarkdown } from '../markdown/fromPlainText';
-import type { PasteOffer } from './Editor';
+import { toMarkdown } from '../markdown/fromPlainText.ts';
+import type { PasteOffer } from './Editor.tsx';
 
 /**
  * Offered the moment plain text is pasted into a note, and gone again as soon

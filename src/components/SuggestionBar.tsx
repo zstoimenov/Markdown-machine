@@ -7,7 +7,7 @@ import {
   type SuggestContext,
   type Suggestion,
   type SuggestionEdit,
-} from '../markdown/suggest';
+} from '../markdown/suggest.ts';
 
 /**
  * A row of the markdown that could sensibly come next, under the editor.

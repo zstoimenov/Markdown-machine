@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
-import { looksLikeMarkdown } from '../markdown/fromPlainText';
-import { canShareFile } from '../fs/singleFileAdapter';
-import { canRevert, useVault } from '../state/vaultStore';
+import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy.ts';
+import { looksLikeMarkdown } from '../markdown/fromPlainText.ts';
+import { canShareFile } from '../fs/singleFileAdapter.ts';
+import { canRevert, useVault } from '../state/vaultStore.ts';
 
 /**
  * Everything you do to a note occasionally, on a phone, in one sheet.

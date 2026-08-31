@@ -4,9 +4,9 @@ import { EditorView, drawSelection, highlightActiveLine, keymap } from '@codemir
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { FORMATTING_KEYMAP } from '../markdown/commands';
-import { looksLikeMarkdown, toMarkdown, type ConversionChange } from '../markdown/fromPlainText';
-import type { SuggestContext } from '../markdown/suggest';
+import { FORMATTING_KEYMAP } from '../markdown/commands.ts';
+import { looksLikeMarkdown, toMarkdown, type ConversionChange } from '../markdown/fromPlainText.ts';
+import type { SuggestContext } from '../markdown/suggest.ts';
 import { tags } from '@lezer/highlight';
 
 /**

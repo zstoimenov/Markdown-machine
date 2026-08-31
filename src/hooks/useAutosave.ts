@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { isDirty, useVault } from '../state/vaultStore';
+import { isDirty, useVault } from '../state/vaultStore.ts';
 
 /** Quiet enough not to write on every keystroke, short enough to feel automatic. */
 const IDLE_MS = 800;

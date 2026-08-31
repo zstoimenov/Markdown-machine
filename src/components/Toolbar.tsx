@@ -1,9 +1,9 @@
-import { useIsNarrow } from '../hooks/useMediaQuery';
-import { baseName } from '../fs/types';
-import { canShareFile } from '../fs/singleFileAdapter';
-import { CopyButton } from './CopyButton';
-import { NoteMenu } from './NoteMenu';
-import { isDirty, useVault, type ViewMode } from '../state/vaultStore';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { baseName } from '../fs/types.ts';
+import { canShareFile } from '../fs/singleFileAdapter.ts';
+import { CopyButton } from './CopyButton.tsx';
+import { NoteMenu } from './NoteMenu.tsx';
+import { isDirty, useVault, type ViewMode } from '../state/vaultStore.ts';
 
 const MODES: Array<{ mode: ViewMode; label: string; hint: string }> = [
   { mode: 'editor', label: 'Write', hint: 'Editor only' },

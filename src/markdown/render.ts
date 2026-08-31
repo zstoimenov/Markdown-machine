@@ -20,7 +20,7 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import DOMPurify from 'dompurify';
-import { splitFrontmatter } from './frontmatter';
+import { splitFrontmatter } from './frontmatter.ts';
 
 /**
  * A curated language set rather than highlight.js's `common` bundle, which

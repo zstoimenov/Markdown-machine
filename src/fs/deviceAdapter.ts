@@ -1,4 +1,4 @@
-import { createStore, del, entries, get, set } from 'idb-keyval';
+import { createStore, del, entries, get, set, type UseStore } from 'idb-keyval';
 import {
   AlreadyExistsError,
   ConflictError,
@@ -6,8 +6,8 @@ import {
   type FileSnapshot,
   type TreeEntry,
   type VaultAdapter,
-} from './types';
-import { keepStorage } from './persist';
+} from './types.ts';
+import { keepStorage } from './persist.ts';
 
 /**
  * Notes kept in this browser, on this device.
@@ -31,7 +31,17 @@ import { keepStorage } from './persist';
  * nothing on the other side of it to match.
  */
 
-const store = createStore('markdown-machine-notes', 'notes');
+/**
+ * Opened on first use rather than on import. `createStore` calls
+ * `indexedDB.open` there and then, which meant every folder-mode launch opened a
+ * second database it would never read — and made the module impossible to import
+ * anywhere without IndexedDB, which is where the store's own tests run.
+ */
+let opened: UseStore | null = null;
+function store(): UseStore {
+  opened ??= createStore('markdown-machine-notes', 'notes');
+  return opened;
+}
 
 interface StoredNote {
   text: string;
@@ -59,14 +69,14 @@ class DeviceVault implements VaultAdapter {
 
   async listDir(path: string): Promise<TreeEntry[]> {
     if (path !== '') return [];
-    const names = (await entries<string, StoredNote>(store)).map(([name]) => String(name));
+    const names = (await entries<string, StoredNote>(store())).map(([name]) => String(name));
     return names
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
       .map((name) => ({ name, path: name, kind: 'file' as const }));
   }
 
   async readFile(path: string): Promise<FileSnapshot> {
-    const note = await get<StoredNote>(keyFor(path), store);
+    const note = await get<StoredNote>(keyFor(path), store());
     if (!note) throw new Error(`Not here: "${path}"`);
     return { text: note.text, modifiedAt: note.modifiedAt };
   }
@@ -82,7 +92,7 @@ class DeviceVault implements VaultAdapter {
     expectedModifiedAt: number | null,
   ): Promise<number> {
     const key = keyFor(path);
-    const current = await get<StoredNote>(key, store);
+    const current = await get<StoredNote>(key, store());
     // Nothing else writes here, so this cannot fire in practice — but the
     // contract is the contract, and a second tab is not impossible.
     if (
@@ -94,33 +104,33 @@ class DeviceVault implements VaultAdapter {
     }
 
     const modifiedAt = Date.now();
-    await set(key, { text: contents, modifiedAt }, store);
+    await set(key, { text: contents, modifiedAt }, store());
     return modifiedAt;
   }
 
   async createFile(path: string): Promise<void> {
     const key = keyFor(path);
-    if ((await get<StoredNote>(key, store)) !== undefined) throw new AlreadyExistsError(path);
-    await set(key, { text: '', modifiedAt: Date.now() }, store);
+    if ((await get<StoredNote>(key, store())) !== undefined) throw new AlreadyExistsError(path);
+    await set(key, { text: '', modifiedAt: Date.now() }, store());
   }
 
   async renameFile(from: string, to: string): Promise<void> {
-    const source = await get<StoredNote>(keyFor(from), store);
+    const source = await get<StoredNote>(keyFor(from), store());
     if (!source) throw new Error(`Not here: "${from}"`);
-    if ((await get<StoredNote>(keyFor(to), store)) !== undefined) throw new AlreadyExistsError(to);
-    await set(keyFor(to), source, store);
-    await del(keyFor(from), store);
+    if ((await get<StoredNote>(keyFor(to), store())) !== undefined) throw new AlreadyExistsError(to);
+    await set(keyFor(to), source, store());
+    await del(keyFor(from), store());
   }
 
   async deleteFile(path: string): Promise<void> {
-    await del(keyFor(path), store);
+    await del(keyFor(path), store());
   }
 }
 
 /** How many notes are already here, for deciding whether to open straight into them. */
 export async function deviceNoteCount(): Promise<number> {
   try {
-    return (await entries(store)).length;
+    return (await entries(store())).length;
   } catch {
     return 0;
   }
@@ -141,12 +151,12 @@ export async function openDeviceVault(): Promise<VaultAdapter> {
 export async function importFile(file: File): Promise<string> {
   const text = await file.text();
   const name = await freeName(file.name || 'Untitled.md');
-  await set(name, { text, modifiedAt: file.lastModified || Date.now() }, store);
+  await set(name, { text, modifiedAt: file.lastModified || Date.now() }, store());
   return name;
 }
 
 async function freeName(name: string): Promise<string> {
-  const taken = new Set((await entries(store)).map(([key]) => String(key)));
+  const taken = new Set((await entries(store())).map(([key]) => String(key)));
   if (!taken.has(name)) return name;
 
   const cut = name.lastIndexOf('.');

@@ -4,21 +4,37 @@ const KEY = 'markdown-machine:vault-handle';
 const LAST_NOTE = 'markdown-machine:last-note';
 
 /**
+ * Everything here is a convenience: which folder was yours, and which note you
+ * were reading. Losing it costs a picker click and an empty pane, so none of it
+ * is worth failing a launch over — and there are real browsers that refuse.
+ * A private window with site data blocked throws from `indexedDB.open` rather
+ * than returning nothing, and until this was guarded that rejection surfaced
+ * from `pickVault` as an error over a folder that had opened perfectly well.
+ */
+async function quietly<T>(work: () => Promise<T>, fallback: T): Promise<T> {
+  if (typeof indexedDB === 'undefined') return fallback;
+  try {
+    return await work();
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Directory handles are structured-cloneable, so IndexedDB can hold one across
  * reloads. The permission that comes with it does not survive — see
  * fsAccessAdapter.restoreVault / reopenVault.
  */
 export async function rememberVault(handle: FileSystemDirectoryHandle): Promise<void> {
-  await set(KEY, handle);
+  await quietly(() => set(KEY, handle), undefined);
 }
 
 export async function recallVault(): Promise<FileSystemDirectoryHandle | null> {
-  const handle = await get<FileSystemDirectoryHandle>(KEY);
-  return handle ?? null;
+  return quietly(async () => (await get<FileSystemDirectoryHandle>(KEY)) ?? null, null);
 }
 
 export async function forgetVault(): Promise<void> {
-  await del(KEY);
+  await quietly(() => del(KEY), undefined);
 }
 
 /**
@@ -33,11 +49,12 @@ export async function forgetVault(): Promise<void> {
  * go looking for a note from the last one.
  */
 export async function rememberNote(vault: string, path: string | null): Promise<void> {
-  if (path === null) await del(LAST_NOTE);
-  else await set(LAST_NOTE, { vault, path });
+  await quietly(() => (path === null ? del(LAST_NOTE) : set(LAST_NOTE, { vault, path })), undefined);
 }
 
 export async function recallNote(vault: string): Promise<string | null> {
-  const last = await get<{ vault: string; path: string }>(LAST_NOTE);
-  return last && last.vault === vault ? last.path : null;
+  return quietly(async () => {
+    const last = await get<{ vault: string; path: string }>(LAST_NOTE);
+    return last && last.vault === vault ? last.path : null;
+  }, null);
 }

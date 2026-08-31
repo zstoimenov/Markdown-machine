@@ -31,17 +31,23 @@ export interface FileSnapshot {
  * overwritten by whatever this buffer happened to hold.
  */
 export class ConflictError extends Error {
-  constructor(readonly path: string) {
+  readonly path: string;
+
+  constructor(path: string) {
     super(`"${path}" changed on disk since it was opened.`);
     this.name = 'ConflictError';
+    this.path = path;
   }
 }
 
 /** Raised when a create or rename would land on a file that already exists. */
 export class AlreadyExistsError extends Error {
-  constructor(readonly path: string) {
+  readonly path: string;
+
+  constructor(path: string) {
     super(`"${path}" already exists.`);
     this.name = 'AlreadyExistsError';
+    this.path = path;
   }
 }
 

@@ -1,4 +1,4 @@
-import { useVault } from '../state/vaultStore';
+import { useVault } from '../state/vaultStore.ts';
 
 /**
  * Offered when a file opens with damage a repair would address. It rewrites the

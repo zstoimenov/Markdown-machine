@@ -1,8 +1,8 @@
-import { useVault } from '../state/vaultStore';
-import { useIsNarrow } from '../hooks/useMediaQuery';
-import { looksLikeMarkdown } from '../markdown/fromPlainText';
-import { FilePicker } from './FilePicker';
-import type { TreeEntry } from '../fs/types';
+import { useVault } from '../state/vaultStore.ts';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { looksLikeMarkdown } from '../markdown/fromPlainText.ts';
+import { FilePicker } from './FilePicker.tsx';
+import type { TreeEntry } from '../fs/types.ts';
 
 function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
   const expanded = useVault((s) => s.expanded.has(entry.path));

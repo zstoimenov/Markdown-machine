@@ -1,4 +1,4 @@
-import { SHORTCUTS } from '../markdown/shortcuts';
+import { SHORTCUTS } from '../markdown/shortcuts.ts';
 
 const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { renderMarkdown } from '../markdown/render';
-import { isMarkdownFile, resolvePath } from '../fs/types';
-import { useVault } from '../state/vaultStore';
+import { renderMarkdown } from '../markdown/render.ts';
+import { isMarkdownFile, resolvePath } from '../fs/types.ts';
+import { useVault } from '../state/vaultStore.ts';
 
 export function Preview({ source, path }: { source: string; path: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
