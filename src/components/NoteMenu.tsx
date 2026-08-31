@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy.ts';
 import { looksLikeMarkdown } from '../markdown/fromPlainText.ts';
-import { canShareFile } from '../fs/singleFileAdapter.ts';
+import { canShareFile } from '../fs/saveOut.ts';
 import { canRevert, useVault } from '../state/vaultStore.ts';
 
 /**

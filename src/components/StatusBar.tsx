@@ -81,13 +81,21 @@ export function StatusBar() {
   const revertable = useVault(canRevert);
   const revert = useVault((s) => s.revert);
   const error = useVault((s) => s.error);
+  const notice = useVault((s) => s.notice);
 
+  // No note open — after a delete, most of all, which is exactly when there is
+  // something to say. The notice belongs here as much as in the branch below.
   if (!activePath) {
     return (
       <footer className="status">
         {error && (
           <span className="is-warn" role="alert">
             {error}
+          </span>
+        )}
+        {notice && (
+          <span className="status-notice" role="status" aria-live="polite">
+            {notice}
           </span>
         )}
       </footer>
@@ -114,6 +122,11 @@ export function StatusBar() {
       {error && (
         <span className="is-warn" role="alert">
           {error}
+        </span>
+      )}
+      {notice && (
+        <span className="status-notice" role="status" aria-live="polite">
+          {notice}
         </span>
       )}
       {revertable && (

@@ -277,6 +277,59 @@ describe('conflict detection', () => {
   });
 });
 
+describe('delete', () => {
+  test('moves the note out of the way rather than destroying it', async () => {
+    const vault = freshVault();
+    await useVault.getState().open(vault.adapter);
+    await useVault.getState().openFile('Welcome.md');
+
+    globalThis.window = { confirm: () => true } as unknown as Window & typeof globalThis;
+    await useVault.getState().deleteActive();
+
+    assert.equal(useVault.getState().activePath, null);
+    const trashed = vault.list().filter((path) => path.startsWith('.trash/'));
+    assert.equal(trashed.length, 1, 'exactly one note went to the trash');
+    assert.equal(vault.read(trashed[0]!), NOTE, 'and it is still the note that was there');
+  });
+
+  test('keeps it out of the tree, the way a delete looked', async () => {
+    const vault = freshVault();
+    await useVault.getState().open(vault.adapter);
+    await useVault.getState().openFile('Welcome.md');
+
+    globalThis.window = { confirm: () => true } as unknown as Window & typeof globalThis;
+    await useVault.getState().deleteActive();
+
+    const roots = useVault.getState().children[''] ?? [];
+    assert.ok(!roots.some((entry) => entry.name.startsWith('.')), 'no .trash in the sidebar');
+    assert.ok(!roots.some((entry) => entry.path === 'Welcome.md'), 'and the note is gone from it');
+  });
+
+  test('says where it went, as news rather than as a warning', async () => {
+    const vault = freshVault();
+    await useVault.getState().open(vault.adapter);
+    await useVault.getState().openFile('Welcome.md');
+
+    globalThis.window = { confirm: () => true } as unknown as Window & typeof globalThis;
+    await useVault.getState().deleteActive();
+
+    assert.match(useVault.getState().notice ?? '', /Moved "Welcome\.md" to \.trash\//);
+    assert.equal(useVault.getState().error, null);
+  });
+
+  test('declining the confirm leaves the note alone', async () => {
+    const vault = freshVault();
+    await useVault.getState().open(vault.adapter);
+    await useVault.getState().openFile('Welcome.md');
+
+    globalThis.window = { confirm: () => false } as unknown as Window & typeof globalThis;
+    await useVault.getState().deleteActive();
+
+    assert.equal(useVault.getState().activePath, 'Welcome.md');
+    assert.equal(vault.read('Welcome.md'), NOTE);
+  });
+});
+
 describe('read-only folders', () => {
   test('report the refusal rather than dropping the edit silently', async () => {
     const vault = createMemoryVault({

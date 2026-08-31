@@ -1,6 +1,6 @@
 import { useIsNarrow } from '../hooks/useMediaQuery.ts';
 import { baseName } from '../fs/types.ts';
-import { canShareFile } from '../fs/singleFileAdapter.ts';
+import { canShareFile } from '../fs/saveOut.ts';
 import { CopyButton } from './CopyButton.tsx';
 import { NoteMenu } from './NoteMenu.tsx';
 import { isDirty, useVault, type ViewMode } from '../state/vaultStore.ts';

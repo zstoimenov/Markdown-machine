@@ -5,11 +5,12 @@ import {
   baseName,
   isMarkdownFile,
   parentPath,
+  TRASH_DIR,
   type TreeEntry,
   type VaultAdapter,
 } from '../fs/types.ts';
 import type { EditorView } from '@codemirror/view';
-import { canShareFile, downloadText, shareText } from '../fs/singleFileAdapter.ts';
+import { canShareFile, downloadText, shareText } from '../fs/saveOut.ts';
 import { deviceNoteCount, importFile, openDeviceVault } from '../fs/deviceAdapter.ts';
 import { recallNote, rememberNote } from '../fs/handleStore.ts';
 import { diagnose, repair, type RepairIssue } from '../markdown/repair.ts';
@@ -97,6 +98,12 @@ interface VaultState {
   saveState: SaveState;
   viewMode: ViewMode;
   error: string | null;
+  /**
+   * Something that happened and went well — where a deleted note was put, say.
+   * Separate from `error` because the status bar styles that as a warning and
+   * announces it as an alert, and neither is true of good news.
+   */
+  notice: string | null;
 
   init: () => Promise<void>;
   /**
@@ -181,6 +188,7 @@ export const useVault = create<VaultState>((set, get) => {
       converted: false,
       saveState: { kind: 'idle' },
       error: null,
+      notice: null,
     });
 
     // Back to whatever was open. A reload is rarely something anyone chose —
@@ -246,7 +254,14 @@ export const useVault = create<VaultState>((set, get) => {
   async function load(path: string, options?: { quiet?: boolean }): Promise<boolean> {
     const { adapter } = get();
     if (!adapter) return false;
-    set({ activePath: path, loadingFile: true, source: null, draft: null, error: null });
+    set({
+      activePath: path,
+      loadingFile: true,
+      source: null,
+      draft: null,
+      error: null,
+      notice: null,
+    });
     void rememberNote(get().vaultName ?? '', path);
     try {
       const { text, modifiedAt } = await adapter.readFile(path);
@@ -312,6 +327,7 @@ export const useVault = create<VaultState>((set, get) => {
     saveState: { kind: 'idle' },
     viewMode: 'split',
     error: null,
+    notice: null,
 
     async init() {
       if (!isSupported()) {
@@ -395,6 +411,7 @@ export const useVault = create<VaultState>((set, get) => {
         converted: false,
         saveState: { kind: 'idle' },
         error: null,
+        notice: null,
       });
     },
 
@@ -720,15 +737,18 @@ export const useVault = create<VaultState>((set, get) => {
       const { adapter, activePath } = state;
       if (!adapter || activePath === null || !state.canWrite) return;
 
-      set({ error: null });
+      set({ error: null, notice: null });
       const confirmed = window.confirm(
-        `Delete "${activePath}"?\n\nThis removes the file from your disk and cannot be undone here.`,
+        `Delete "${activePath}"?\n\n` +
+          `It moves to the ${TRASH_DIR} folder, so you can put it back by hand.`,
       );
       if (!confirmed) return;
 
       const directory = parentPath(activePath);
       try {
-        await adapter.deleteFile(activePath);
+        // Moved rather than removed. Everything else destructive here is one
+        // undo away; delete was the exception, and the confirm dialog said so.
+        const trashed = await adapter.trashFile(activePath);
         set((current) => {
           const originals = { ...current.originals };
           delete originals[activePath];
@@ -747,6 +767,7 @@ export const useVault = create<VaultState>((set, get) => {
         // Nothing to come back to on the next launch.
         void rememberNote(get().vaultName ?? '', null);
         await refreshDir(directory);
+        set({ notice: `Moved "${baseName(activePath)}" to ${trashed}` });
       } catch (error) {
         set({ error: `Could not delete ${baseName(activePath)}: ${describe(error)}` });
       }

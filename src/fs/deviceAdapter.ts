@@ -3,6 +3,8 @@ import {
   AlreadyExistsError,
   ConflictError,
   baseName,
+  trashPathFor,
+  TRASH_DIR,
   type FileSnapshot,
   type TreeEntry,
   type VaultAdapter,
@@ -48,9 +50,13 @@ interface StoredNote {
   modifiedAt: number;
 }
 
-/** Only ever a file name — the library has no directories to put one in. */
+/**
+ * The library is flat, so a key is a file name — except for trashed notes, which
+ * keep the `.trash/` in front to stay out of the listing. There are no
+ * directories here to put one in; the prefix is standing in for one.
+ */
 function keyFor(path: string): string {
-  return baseName(path);
+  return path.startsWith(`${TRASH_DIR}/`) ? path : baseName(path);
 }
 
 class DeviceVault implements VaultAdapter {
@@ -69,7 +75,11 @@ class DeviceVault implements VaultAdapter {
 
   async listDir(path: string): Promise<TreeEntry[]> {
     if (path !== '') return [];
-    const names = (await entries<string, StoredNote>(store())).map(([name]) => String(name));
+    const names = (await entries<string, StoredNote>(store()))
+      .map(([name]) => String(name))
+      // Thrown away, not gone. Out of the listing for the same reason the
+      // folder backend's `.trash` directory is.
+      .filter((name) => !name.startsWith(`${TRASH_DIR}/`));
     return names
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
       .map((name) => ({ name, path: name, kind: 'file' as const }));
@@ -124,6 +134,12 @@ class DeviceVault implements VaultAdapter {
 
   async deleteFile(path: string): Promise<void> {
     await del(keyFor(path), store());
+  }
+
+  async trashFile(path: string): Promise<string> {
+    const target = trashPathFor(path);
+    await this.renameFile(path, target);
+    return target;
   }
 }
 

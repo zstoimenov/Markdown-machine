@@ -493,10 +493,11 @@ conflict problem invented a second time and worse.
 - **Where folder mode does run on a phone, write access may be session-scoped.** Some builds
   offer only "until you close all tabs" rather than "Allow on every visit", and the page
   cannot tell which prompt was shown or change the answer.
-- **The single-file fallback still holds the note in memory only.** A reload, or iOS
-  discarding a backgrounded tab, loses it along with any edits. The Origin Private File System
-  would survive both and works on iOS; keeping notes there is a storage mode of its own and
-  was not built.
+- **Images in an open note are not re-read while it is open.** They are resolved once and
+  kept, because resolving them on every render meant reading every image off disk per
+  keystroke. An image edited on disk under an open note therefore shows its old self until
+  the note is reopened — the same terms the note itself is on, since nothing here watches
+  the folder.
 - **The keyboard is detected, not reported.** Where there is no VirtualKeyboard API the only
   signal is the visual viewport shrinking, and the line between "a keyboard opened" and
   "some browser chrome slid away" is a threshold rather than a fact. A very short keyboard
@@ -505,7 +506,7 @@ conflict problem invented a second time and worse.
   that visit is happening, so from the second load on there is nothing left to fetch — but
   there is no app to install before you have been to it once.
 - **`.md` files do not open into the installed app.** A manifest can register file handlers,
-  and the single-file path already knows how to read one; wiring the two together is a
+  and the device library already knows how to take one in; wiring the two together is a
   feature rather than an icon, and was not built.
 - **The conversion cannot recover emphasis, and cannot recover a heading's level.** Plain
   text records neither. A converted note comes back with its structure and none of its
@@ -532,15 +533,18 @@ conflict problem invented a second time and worse.
   so an externally-edited note that is open here still shows the old text until you save or
   reopen it. The conflict check means it cannot be silently overwritten, which is the part
   that matters; live watching stays on the iterate list.
-- **Directories cannot be created, renamed or deleted.** Only files. Folder operations were
-  not in any milestone and adding them would widen the destructive surface.
-- **The single-file fallback cannot show images.** Relative image paths need the folder the
-  file sits in, which is exactly what that browser will not hand over. This bites hardest on
-  mobile, where the fallback is the only mode available.
+- **Directories cannot be created, renamed or deleted.** Only files, and `.trash/`, which the
+  backend makes the first time something is thrown away. Folder operations were not in any
+  milestone and adding them would widen the destructive surface.
+- **The device library cannot show images.** Relative image paths need the folder the note
+  sits in, which is exactly what a browser without the File System Access API will not hand
+  over. This bites hardest on mobile, where the library is the only mode available.
 - **The repair cannot recover a heading's title/body boundary** in a fully flattened blob.
   See section 9.
-- **Only one file at a time on mobile.** A multi-select file picker would give phones a
-  small library rather than a single note; not built, because it was not asked for.
+- **Deleting is recoverable, but only by hand.** A deleted note moves to `.trash/` rather
+  than off the disk, and the tree skips dotted names so it stays out of the way. Putting one
+  back means going to the folder yourself — there is no restore in the app, and nothing ever
+  empties the trash.
 - **Copy writes plain text only, never `text/html`.** Adding an HTML flavour would make
   rich targets paste with real formatting, but it would also override the plain text in
   boxes that accept both — the opposite of what the feature is for.

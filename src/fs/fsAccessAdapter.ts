@@ -4,6 +4,8 @@ import {
   baseName,
   isMarkdownFile,
   parentPath,
+  trashPathFor,
+  TRASH_DIR,
   type FileSnapshot,
   type TreeEntry,
   type VaultAdapter,
@@ -156,6 +158,16 @@ class FsAccessVault implements VaultAdapter {
   async deleteFile(path: string): Promise<void> {
     const parent = await this.dirHandle(parentPath(path));
     await parent.removeEntry(baseName(path));
+  }
+
+  async trashFile(path: string): Promise<string> {
+    const target = trashPathFor(path);
+    // `create` here and nowhere else: the folder is made the first time
+    // something is thrown away, rather than sitting in every vault this app
+    // has ever been pointed at.
+    await this.dirHandle(TRASH_DIR, true);
+    await this.renameFile(path, target);
+    return target;
   }
 }
 

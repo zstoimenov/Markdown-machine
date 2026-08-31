@@ -1,73 +1,14 @@
-import { baseName, type FileSnapshot, type TreeEntry, type VaultAdapter } from './types.ts';
+import { baseName } from './types.ts';
 
 /**
- * The degradation path for browsers without the File System Access API —
- * Firefox and Safari today.
+ * Getting a note out of the app, for the browsers that cannot write it back.
  *
- * A `File` from an <input> or a drop can be read but never written back: the
- * browser gives no handle to the original. So this adapter is permanently
- * unwritable, and the UI offers a download instead of a save. That is a
- * genuinely worse experience, which is why it is the fallback and not the design.
+ * This is what is left of the single-file fallback. That mode — one file, held
+ * in memory, read-only — was replaced by the device library, which survives a
+ * reload and holds more than one note; the adapter went with it and only these
+ * two ways out remain. They are not really file-system code, which is why they
+ * are named for what they do rather than for what used to be around them.
  */
-class SingleFileVault implements VaultAdapter {
-  readonly #file: File;
-
-  constructor(file: File) {
-    this.#file = file;
-  }
-
-  get name(): string {
-    return this.#file.name;
-  }
-
-  /** Always false. There is nowhere to write to, not merely no permission yet. */
-  get writable(): boolean {
-    return false;
-  }
-
-  async requestWrite(): Promise<boolean> {
-    return false;
-  }
-
-  async listDir(path: string): Promise<TreeEntry[]> {
-    if (path !== '') return [];
-    return [{ name: this.#file.name, path: this.#file.name, kind: 'file' }];
-  }
-
-  async readFile(path: string): Promise<FileSnapshot> {
-    if (path !== this.#file.name) throw new Error(`Not open: "${path}"`);
-    return { text: await this.#file.text(), modifiedAt: this.#file.lastModified };
-  }
-
-  async readBinary(): Promise<Blob> {
-    // Relative images live beside the file, in a folder this mode cannot see.
-    throw new Error('Images need a folder, which this browser cannot open.');
-  }
-
-  private unsupported(): never {
-    throw new Error('This browser can only open one file at a time, read-only.');
-  }
-
-  async writeFile(): Promise<number> {
-    this.unsupported();
-  }
-
-  async createFile(): Promise<void> {
-    this.unsupported();
-  }
-
-  async renameFile(): Promise<void> {
-    this.unsupported();
-  }
-
-  async deleteFile(): Promise<void> {
-    this.unsupported();
-  }
-}
-
-export function openSingleFile(file: File): VaultAdapter {
-  return new SingleFileVault(file);
-}
 
 /**
  * Whether this platform's share sheet is how a file reaches storage.

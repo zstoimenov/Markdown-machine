@@ -261,7 +261,19 @@ check('declining the delete confirm keeps the file', (await fileList()).includes
 page.once('dialog', (d) => d.accept());
 await page.getByRole('button', { name: 'Delete' }).click();
 await page.waitForFunction(() => document.querySelector('.status-path') === null);
-check('confirming the delete removes the file', !(await fileList()).includes('Renamed note.md'));
+check('confirming the delete takes the file out of the folder', !(await fileList()).includes('Renamed note.md'));
+// Out of the folder, not off the disk. The tree skips dotted names, so the
+// trash is as invisible as a delete was — and the note is still in there.
+const trashed = (await fileList()).filter((path) => path.startsWith('.trash/'));
+check('and puts it in the trash rather than destroying it', trashed.length === 1, trashed.join());
+// That note was created empty and never typed into, so what matters is that
+// its contents are still readable rather than what they happen to say.
+check('where its contents are still readable', (await fileText(trashed[0])) !== undefined);
+check('and its name is still in there', trashed[0].includes('Renamed note.md'), trashed[0]);
+check('the trash does not show up in the sidebar',
+  (await page.getByRole('treeitem', { name: /trash/ }).count()) === 0);
+check('and the status bar says where the note went',
+  (await page.locator('.status-notice').innerText()).includes('.trash/'));
 
 await page.screenshot({ path: `${SP}/smoke-write.png` });
 

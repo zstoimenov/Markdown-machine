@@ -3,6 +3,8 @@ import {
   ConflictError,
   baseName,
   parentPath,
+  trashPathFor,
+  TRASH_DIR,
   type FileSnapshot,
   type TreeEntry,
   type VaultAdapter,
@@ -62,6 +64,10 @@ export function createMemoryVault(options: MemoryVaultOptions): MemoryVault {
         parent = parentPath(parent);
       }
     }
+    // The real backends' trees skip dotted names, so a trashed note must not
+    // show up here either — a fake that listed it would agree with any bug that
+    // put it back on screen.
+    found.delete(TRASH_DIR);
     return found;
   }
 
@@ -136,6 +142,12 @@ export function createMemoryVault(options: MemoryVaultOptions): MemoryVault {
 
     async deleteFile(path) {
       files.delete(path);
+    },
+
+    async trashFile(path) {
+      const target = trashPathFor(path);
+      await adapter.renameFile(path, target);
+      return target;
     },
   };
 

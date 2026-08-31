@@ -15,6 +15,9 @@
  */
 const CACHE = 'markdown-machine-v1';
 
+/** Hashed build output: `assets/index-BciIhK-r.js` and friends. */
+const IMMUTABLE = /\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[a-z]+$/;
+
 /**
  * The one thing that has to be cached before it is asked for: on the first visit
  * the worker is still installing while the page loads, so nothing goes through
@@ -46,6 +49,37 @@ async function precache() {
   }
 
   await Promise.all([...files].map((file) => cache.add(file).catch(() => undefined)));
+  await forgetOldBuilds(cache, files, shell);
+}
+
+/**
+ * Drop the assets of builds that are no longer deployed.
+ *
+ * Content hashes are what make `cacheFirst` safe, and they are also why this is
+ * needed: every deploy emits new filenames, so without pruning the cache grew by
+ * about a megabyte per deploy and nothing ever took any of it back. The cache
+ * name is a constant, so the usual trick — a new cache name per version, old
+ * ones swept on activate — never fired.
+ *
+ * On the folder path that was untidy. On the device path it was worse: the notes
+ * live in the same origin's storage under the same quota, and pressure on it is
+ * exactly what the app warns people about. It should not be competing with
+ * itself for the room it asks them to trust.
+ *
+ * Only hashed assets are considered. Anything else — the shell, the manifest,
+ * the icons — keeps its name across builds and is refreshed rather than
+ * replaced.
+ */
+async function forgetOldBuilds(cache, current, shell) {
+  const assets = new URL('assets/', shell).href;
+  await Promise.all(
+    (await cache.keys()).map(async (request) => {
+      if (!request.url.startsWith(assets)) return;
+      if (!IMMUTABLE.test(new URL(request.url).pathname)) return;
+      if (current.has(request.url)) return;
+      await cache.delete(request);
+    }),
+  );
 }
 
 async function buildFiles(shell) {
@@ -74,8 +108,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/** Hashed build output: `assets/index-BciIhK-r.js` and friends. */
-const IMMUTABLE = /\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[a-z]+$/;
 
 /**
  * `ignoreVary` because a precached file was fetched by the worker and the page
