@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { storageIsPersisted } from '../fs/persist';
-import { useIsNarrow } from '../hooks/useMediaQuery';
+import { storageIsPersisted } from '../fs/persist.ts';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
 
 /**
  * What "on this device" actually means.

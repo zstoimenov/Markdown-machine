@@ -1,8 +1,19 @@
-import { useVault } from '../state/vaultStore';
-import { useIsNarrow } from '../hooks/useMediaQuery';
-import { looksLikeMarkdown } from '../markdown/fromPlainText';
-import { FilePicker } from './FilePicker';
-import type { TreeEntry } from '../fs/types';
+import { useCallback, useRef } from 'react';
+import { useVault } from '../state/vaultStore.ts';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { looksLikeMarkdown } from '../markdown/fromPlainText.ts';
+import { FilePicker } from './FilePicker.tsx';
+import type { TreeEntry } from '../fs/types.ts';
+
+/**
+ * The tree is a tree, not a list of links.
+ *
+ * It reads as one — `role="tree"` and `treeitem`, with folders carrying their
+ * expanded state — and it moves like one: arrows walk it, and only the current
+ * row is in the tab order. That last part is what a vault of any size needs.
+ * With every note a tab stop, reaching the editor from the toolbar in a folder
+ * of two hundred notes meant two hundred presses.
+ */
 
 function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
   const expanded = useVault((s) => s.expanded.has(entry.path));
@@ -13,26 +24,33 @@ function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
   const openFile = useVault((s) => s.openFile);
 
   const isDir = entry.kind === 'directory';
-  const indent = { paddingLeft: `${depth * 12 + 8}px` };
 
   return (
     <>
-      <button
-        type="button"
-        className={`tree-row${active ? ' is-active' : ''}`}
-        style={indent}
+      <div
+        role="treeitem"
         aria-expanded={isDir ? expanded : undefined}
-        onClick={() => (isDir ? toggleDir(entry.path) : openFile(entry.path))}
+        aria-selected={active}
+        // One row is reachable by Tab; the arrows reach the rest. The current
+        // note is that row, so tabbing into the tree lands where you left off.
+        tabIndex={active ? 0 : -1}
+        className={`tree-row${active ? ' is-active' : ''}`}
+        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        data-path={entry.path}
+        data-kind={entry.kind}
+        onClick={() => void (isDir ? toggleDir(entry.path) : openFile(entry.path))}
       >
         <span className="tree-icon" aria-hidden="true">
           {isDir ? (expanded ? '▾' : '▸') : '·'}
         </span>
         <span className="tree-name">{entry.name}</span>
         {loading && <span className="tree-hint">…</span>}
-      </button>
+      </div>
 
       {isDir && expanded && children && (
-        <Level entries={children} depth={depth + 1} emptyLabel="empty" />
+        <div role="group">
+          <Level entries={children} depth={depth + 1} emptyLabel="empty" />
+        </div>
       )}
     </>
   );
@@ -71,6 +89,8 @@ export function FileTree() {
   const renameActive = useVault((s) => s.renameActive);
   const deleteActive = useVault((s) => s.deleteActive);
   const repairActive = useVault((s) => s.repairActive);
+  const toggleDir = useVault((s) => s.toggleDir);
+  const openFile = useVault((s) => s.openFile);
   // The file as opened, not the draft: this decides whether a button is offered,
   // and a judgement that flickered on every keystroke would be worse than useless.
   const source = useVault((s) => s.source);
@@ -81,6 +101,67 @@ export function FileTree() {
   // a finger wide rather than a link in a row of links.
   const narrow = useIsNarrow();
   const mode = useVault((s) => s.mode);
+  const treeRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Arrow-key movement over whatever rows are currently rendered. Reading the
+   * DOM rather than rebuilding the visible order in JavaScript: expansion state
+   * already decides what is on screen, and asking the page is both shorter and
+   * incapable of disagreeing with it.
+   */
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const rows = Array.from(
+        treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [],
+      );
+      const at = rows.indexOf(event.target as HTMLElement);
+      if (at === -1) return;
+
+      const row = rows[at];
+      const path = row?.dataset.path;
+      const isDir = row?.dataset.kind === 'directory';
+      const isExpanded = row?.getAttribute('aria-expanded') === 'true';
+
+      const move = (to: number) => {
+        event.preventDefault();
+        rows[Math.min(rows.length - 1, Math.max(0, to))]?.focus();
+      };
+
+      switch (event.key) {
+        case 'ArrowDown':
+          return move(at + 1);
+        case 'ArrowUp':
+          return move(at - 1);
+        case 'Home':
+          return move(0);
+        case 'End':
+          return move(rows.length - 1);
+        case 'ArrowRight':
+          // Open a closed folder; step into an open one. Nothing on a file.
+          if (isDir && path !== undefined && !isExpanded) {
+            event.preventDefault();
+            void toggleDir(path);
+          } else if (isDir) {
+            move(at + 1);
+          }
+          return;
+        case 'ArrowLeft':
+          if (isDir && path !== undefined && isExpanded) {
+            event.preventDefault();
+            void toggleDir(path);
+          }
+          return;
+        case 'Enter':
+        case ' ':
+          if (path === undefined) return;
+          event.preventDefault();
+          void (isDir ? toggleDir(path) : openFile(path));
+          return;
+        default:
+      }
+    },
+    [toggleDir, openFile],
+  );
 
   if (!roots) return null;
 
@@ -140,9 +221,23 @@ export function FileTree() {
           )}
         </div>
       )}
-      <nav className="tree" aria-label="Notes">
+      <div
+        ref={treeRef}
+        role="tree"
+        aria-label="Notes"
+        className="tree"
+        // Nothing is open yet, so nothing carries tabIndex 0. Without this the
+        // tree would be unreachable by keyboard until a note had been clicked.
+        tabIndex={activePath === null ? 0 : -1}
+        onKeyDown={onKeyDown}
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) {
+            event.currentTarget.querySelector<HTMLElement>('[role="treeitem"]')?.focus();
+          }
+        }}
+      >
         <Level entries={roots} depth={0} emptyLabel="No markdown files in this folder." />
-      </nav>
+      </div>
     </>
   );
 }

@@ -31,17 +31,23 @@ export interface FileSnapshot {
  * overwritten by whatever this buffer happened to hold.
  */
 export class ConflictError extends Error {
-  constructor(readonly path: string) {
+  readonly path: string;
+
+  constructor(path: string) {
     super(`"${path}" changed on disk since it was opened.`);
     this.name = 'ConflictError';
+    this.path = path;
   }
 }
 
 /** Raised when a create or rename would land on a file that already exists. */
 export class AlreadyExistsError extends Error {
-  constructor(readonly path: string) {
+  readonly path: string;
+
+  constructor(path: string) {
     super(`"${path}" already exists.`);
     this.name = 'AlreadyExistsError';
+    this.path = path;
   }
 }
 
@@ -73,6 +79,29 @@ export interface VaultAdapter {
   /** Rename within the vault. Raises AlreadyExistsError rather than clobbering. */
   renameFile(from: string, to: string): Promise<void>;
   deleteFile(path: string): Promise<void>;
+  /**
+   * Put a note out of the way rather than destroy it, and say where it went.
+   *
+   * Everything else destructive in this app is recoverable — a repair is one
+   * undo, a conversion is one undo, autosave keeps a snapshot behind Revert —
+   * and delete was the exception. What "out of the way" means is the backend's
+   * to decide, because it depends on what it has: a folder can hold a `.trash`
+   * directory, and browser storage cannot hold a directory at all.
+   */
+  trashFile(path: string): Promise<string>;
+}
+
+/**
+ * Where deleted notes go. A dotted name, so the tree skips it for the same
+ * reason it skips `.git` and `.obsidian` — a trash folder that showed up in the
+ * sidebar would be a worse delete, not a safer one.
+ */
+export const TRASH_DIR = '.trash';
+
+/** A name that will not collide with whatever is already in there. */
+export function trashPathFor(path: string): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return `${TRASH_DIR}/${stamp}-${baseName(path)}`;
 }
 
 export const MARKDOWN_EXTENSIONS = ['.md', '.markdown', '.mdown', '.mkd'];

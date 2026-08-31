@@ -1,4 +1,4 @@
-import { useVault } from '../state/vaultStore';
+import { useVault } from '../state/vaultStore.ts';
 
 /**
  * Shown when the open file changed on disk after it was read here. Autosave is

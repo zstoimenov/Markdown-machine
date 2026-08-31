@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy';
-import { useVault } from '../state/vaultStore';
+import { COPY_VARIANTS, copyNote, copySizes, type CopyMode } from '../markdown/copy.ts';
+import { useVault } from '../state/vaultStore.ts';
 
 /**
  * Copies the open note either exactly as written, markers and all, or as plain
@@ -95,7 +95,9 @@ export function CopyButton() {
       {open && (
         <div className="copy-menu" role="menu">
           {message ? (
-            <p className="copy-message">{message}</p>
+            <p className="copy-message" role="status" aria-live="polite">
+              {message}
+            </p>
           ) : (
             COPY_VARIANTS.map(({ mode, label }) => (
               <button key={mode} type="button" role="menuitem" onClick={() => void copy(mode)}>

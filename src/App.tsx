@@ -1,17 +1,17 @@
 import { useEffect } from 'react';
-import { isDirty, useVault } from './state/vaultStore';
-import { FileTree } from './components/FileTree';
-import { StatusBar } from './components/StatusBar';
-import { Toolbar } from './components/Toolbar';
-import { Workspace } from './components/Workspace';
-import { ConflictBar } from './components/ConflictBar';
-import { RepairBar } from './components/RepairBar';
-import { EmptyState } from './components/EmptyState';
-import { FilePicker } from './components/FilePicker';
-import { FallbackNotice } from './components/FallbackNotice';
-import { useIsNarrow } from './hooks/useMediaQuery';
-import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave';
-import { useKeyboardInsets } from './hooks/useViewport';
+import { isDirty, useVault } from './state/vaultStore.ts';
+import { FileTree } from './components/FileTree.tsx';
+import { StatusBar } from './components/StatusBar.tsx';
+import { Toolbar } from './components/Toolbar.tsx';
+import { Workspace } from './components/Workspace.tsx';
+import { ConflictBar } from './components/ConflictBar.tsx';
+import { RepairBar } from './components/RepairBar.tsx';
+import { EmptyState } from './components/EmptyState.tsx';
+import { FilePicker } from './components/FilePicker.tsx';
+import { FallbackNotice } from './components/FallbackNotice.tsx';
+import { useIsNarrow } from './hooks/useMediaQuery.ts';
+import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave.ts';
+import { useKeyboardInsets } from './hooks/useViewport.ts';
 
 function Splash({
   title,

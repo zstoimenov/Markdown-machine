@@ -1,19 +1,29 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { useVault } from '../state/vaultStore';
-import { useIsNarrow } from '../hooks/useMediaQuery';
-import { useScrollSync } from '../hooks/useScrollSync';
+import { useVault } from '../state/vaultStore.ts';
+import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { useScrollSync } from '../hooks/useScrollSync.ts';
 /**
  * CodeMirror is the single heaviest thing this app loads, and nothing needs it
  * until a note is actually opened — the folder splash and the reading path
  * never touch it. Splitting it out keeps it off the critical path.
  */
-const Editor = lazy(() => import('./Editor').then((module) => ({ default: module.Editor })));
-import type { PasteOffer } from './Editor';
-import { ConvertOffer } from './ConvertOffer';
-import { SuggestionBar } from './SuggestionBar';
-import type { SuggestContext } from '../markdown/suggest';
-import { Preview } from './Preview';
+const Editor = lazy(() => import('./Editor.tsx').then((module) => ({ default: module.Editor })));
+/**
+ * And the renderer, for the same reason and a larger saving. markdown-it,
+ * highlight.js and DOMPurify came to 230 kB of the eager bundle — more than the
+ * editor this pattern was introduced for — and none of it is touched by the
+ * splash, the permission screen or the folder picker. Write mode never needs it
+ * either. The service worker precaches every chunk the build emits, so nothing
+ * about offline use changes.
+ */
+const Preview = lazy(() =>
+  import('./Preview.tsx').then((module) => ({ default: module.Preview })),
+);
+import type { PasteOffer } from './Editor.tsx';
+import { ConvertOffer } from './ConvertOffer.tsx';
+import { SuggestionBar } from './SuggestionBar.tsx';
+import type { SuggestContext } from '../markdown/suggest.ts';
 
 const MIN_PANE_PERCENT = 20;
 
@@ -120,7 +130,9 @@ export function Workspace({ path, source }: { path: string; source: string }) {
           className={`pane pane-preview${viewMode === 'preview' ? ' is-reader' : ''}`}
           ref={setPreviewPane}
         >
-          <Preview source={rendered} path={path} />
+          <Suspense fallback={<p className="pane-loading">Loading preview…</p>}>
+            <Preview source={rendered} path={path} />
+          </Suspense>
         </div>
       )}
     </div>

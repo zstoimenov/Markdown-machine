@@ -4,12 +4,14 @@ import {
   baseName,
   isMarkdownFile,
   parentPath,
+  trashPathFor,
+  TRASH_DIR,
   type FileSnapshot,
   type TreeEntry,
   type VaultAdapter,
-} from './types';
-import { forgetVault, recallVault, rememberVault } from './handleStore';
-import { keepStorage } from './persist';
+} from './types.ts';
+import { forgetVault, recallVault, rememberVault } from './handleStore.ts';
+import { keepStorage } from './persist.ts';
 
 export function isSupported(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
@@ -17,16 +19,15 @@ export function isSupported(): boolean {
 
 class FsAccessVault implements VaultAdapter {
   #writable: boolean;
+  readonly #root: FileSystemDirectoryHandle;
 
-  constructor(
-    private readonly root: FileSystemDirectoryHandle,
-    writable: boolean,
-  ) {
+  constructor(root: FileSystemDirectoryHandle, writable: boolean) {
+    this.#root = root;
     this.#writable = writable;
   }
 
   get name(): string {
-    return this.root.name;
+    return this.#root.name;
   }
 
   get writable(): boolean {
@@ -35,12 +36,12 @@ class FsAccessVault implements VaultAdapter {
 
   async requestWrite(): Promise<boolean> {
     if (this.#writable) return true;
-    this.#writable = (await this.root.requestPermission({ mode: 'readwrite' })) === 'granted';
+    this.#writable = (await this.#root.requestPermission({ mode: 'readwrite' })) === 'granted';
     return this.#writable;
   }
 
   private async dirHandle(path: string, create = false): Promise<FileSystemDirectoryHandle> {
-    let handle = this.root;
+    let handle = this.#root;
     if (path === '') return handle;
     for (const segment of path.split('/')) {
       handle = await handle.getDirectoryHandle(segment, { create });
@@ -157,6 +158,16 @@ class FsAccessVault implements VaultAdapter {
   async deleteFile(path: string): Promise<void> {
     const parent = await this.dirHandle(parentPath(path));
     await parent.removeEntry(baseName(path));
+  }
+
+  async trashFile(path: string): Promise<string> {
+    const target = trashPathFor(path);
+    // `create` here and nowhere else: the folder is made the first time
+    // something is thrown away, rather than sitting in every vault this app
+    // has ever been pointed at.
+    await this.dirHandle(TRASH_DIR, true);
+    await this.renameFile(path, target);
+    return target;
   }
 }
 

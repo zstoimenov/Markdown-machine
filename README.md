@@ -13,7 +13,9 @@ delete live in the sidebar.
 
 If a note changes on disk while you have it open, the save is refused rather than
 overwriting it, and you are asked which side to keep. The status bar always says where
-things stand, and Revert takes a file back to how it was when you opened it.
+things stand, and Revert takes a file back to how it was when you opened it. Deleting a
+note moves it to `.trash/` in the same folder rather than off the disk — the tree skips
+dotted names, so it goes as quietly as a delete did, and it is still there if you want it.
 
 See [docs/PLAN.md](docs/PLAN.md) for the design, the milestones, and what was deliberately
 left out.
@@ -28,10 +30,15 @@ left out.
 | Link | `Mod`+`K` |
 | Cycle heading level | `Mod`+`⇧`+`H` |
 | Bullet list | `Mod`+`⇧`+`L` |
+| Find in note | `Mod`+`F` |
 | Save now | `Mod`+`S` |
 
 `Mod` is `⌘` on a Mac and `Ctrl` elsewhere. The same list shows in the app whenever no note
 is open.
+
+`Mod`+`F` finds within the open note, and the browser's own find is not a substitute for it:
+the editor only renders the part of a long note that is on screen, so find-in-page cannot see
+a word that is scrolled away.
 
 ## Live
 
@@ -321,11 +328,20 @@ the real app against an in-memory vault — useful for working on the tree, the 
 the styling without clicking through a picker each reload.
 
 `scripts/smoke.mjs` drives that fixture in a real browser and checks the read and edit paths
-end to end. Playwright is not a dependency, since installing it pulls a browser download, so
-run it on demand:
+end to end — the conflict path, revert, rename, delete, the phone layout, the share sheet,
+the keyboard insets. It runs in CI on every push. Playwright is still not a dependency,
+since installing it pulls a browser download every contributor would otherwise pay for, so
+running it locally installs it on demand:
 
 ```sh
 npm install --no-save playwright && npx playwright install chromium
 npm run dev                     # in another terminal
 node scripts/smoke.mjs
 ```
+
+Set `CHROMIUM` to an existing browser binary to skip the download. A console error or an
+uncaught exception fails the run, not just a failed assertion.
+
+The full gate, which is what CI runs, is `npm run lint`, `npm test` and `npm run build` —
+the last of which typechecks first. `npm test` needs Node 22.6 or newer, because it runs the
+TypeScript test files directly.

@@ -10,16 +10,9 @@
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from '../App';
-import { useVault } from '../state/vaultStore';
-import {
-  AlreadyExistsError,
-  ConflictError,
-  baseName,
-  parentPath,
-  type TreeEntry,
-  type VaultAdapter,
-} from '../fs/types';
+import { App } from '../App.tsx';
+import { useVault } from '../state/vaultStore.ts';
+import { createMemoryVault } from './memoryVault.ts';
 import '../styles.css';
 
 const WELCOME = `---
@@ -105,8 +98,6 @@ const DOT_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAPElEQVR42u3NMQEAAAgDoJnc6BpjDyR' +
   'gcnfCqkAgEAgEAoFAIBAIBAKBQCAQCAQCgUAgEAgEAoFA8LFgAV+AAAGb0y0kAAAAAElFTkSuQmCC';
 
-const DIRECTORIES = new Set(['notes']);
-
 const FORMAT = `# Format
 
 ## A table
@@ -146,83 +137,20 @@ See the handbook (https://example.com) before starting.
     npm run dev
 `;
 
-const files = new Map<string, { text: string; modifiedAt: number }>([
-  ['Broken.md', { text: BROKEN, modifiedAt: Date.now() }],
-  ['Welcome.md', { text: WELCOME, modifiedAt: Date.now() }],
-  ['Format.md', { text: FORMAT, modifiedAt: Date.now() }],
-  ['Plain.md', { text: PLAIN, modifiedAt: Date.now() }],
-  ['Long.md', { text: LONG_NOTE, modifiedAt: Date.now() }],
-  ['notes/Second.md', { text: SECOND, modifiedAt: Date.now() }],
-]);
+const DOT_BYTES = Uint8Array.from(atob(DOT_PNG), (c) => c.charCodeAt(0));
 
-let writable = true;
-
-/**
- * An in-memory vault with the same contract as the real one, including the
- * conflict check — the write path is the half of this app that can destroy
- * something, so the harness has to be able to exercise it.
- */
-const fakeVault: VaultAdapter = {
+const vault = createMemoryVault({
   name: 'demo-vault',
-  get writable() {
-    return writable;
+  files: {
+    'Broken.md': BROKEN,
+    'Welcome.md': WELCOME,
+    'Format.md': FORMAT,
+    'Plain.md': PLAIN,
+    'Long.md': LONG_NOTE,
+    'notes/Second.md': SECOND,
   },
-  async requestWrite() {
-    writable = true;
-    return true;
-  },
-  async listDir(path) {
-    const entries: TreeEntry[] = [];
-    for (const directory of DIRECTORIES) {
-      if (parentPath(directory) === path) {
-        entries.push({ name: baseName(directory), path: directory, kind: 'directory' });
-      }
-    }
-    for (const file of files.keys()) {
-      if (parentPath(file) === path) {
-        entries.push({ name: baseName(file), path: file, kind: 'file' });
-      }
-    }
-    return entries.sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-    });
-  },
-  async readFile(path) {
-    const file = files.get(path);
-    if (!file) throw new Error('not found');
-    return { text: file.text, modifiedAt: file.modifiedAt };
-  },
-  async readBinary(path) {
-    if (path !== 'assets/dot.png') throw new Error('not found');
-    const bytes = Uint8Array.from(atob(DOT_PNG), (c) => c.charCodeAt(0));
-    return new Blob([bytes], { type: 'image/png' });
-  },
-  async writeFile(path, contents, expectedModifiedAt) {
-    const file = files.get(path);
-    if (!file) throw new Error('not found');
-    if (expectedModifiedAt !== null && Math.abs(file.modifiedAt - expectedModifiedAt) > 1000) {
-      throw new ConflictError(path);
-    }
-    const modifiedAt = Date.now();
-    files.set(path, { text: contents, modifiedAt });
-    return modifiedAt;
-  },
-  async createFile(path) {
-    if (files.has(path)) throw new AlreadyExistsError(path);
-    files.set(path, { text: '', modifiedAt: Date.now() });
-  },
-  async renameFile(from, to) {
-    if (files.has(to)) throw new AlreadyExistsError(to);
-    const file = files.get(from);
-    if (!file) throw new Error('not found');
-    files.set(to, file);
-    files.delete(from);
-  },
-  async deleteFile(path) {
-    files.delete(path);
-  },
-};
+  binaries: { 'assets/dot.png': new Blob([DOT_BYTES], { type: 'image/png' }) },
+});
 
 // Lets the smoke test play the part of another program editing the same file.
 declare global {
@@ -235,24 +163,18 @@ declare global {
   }
 }
 window.mmFixture = {
-  touch(path, text) {
-    files.set(path, { text, modifiedAt: Date.now() + 10_000 });
-  },
-  read(path) {
-    return files.get(path)?.text;
-  },
-  list() {
-    return [...files.keys()].sort();
-  },
+  touch: (path, text) => vault.touch(path, text),
+  read: (path) => vault.read(path),
+  list: () => vault.list(),
 };
 
 useVault.setState({
   status: 'ready',
-  adapter: fakeVault,
+  adapter: vault.adapter,
   vaultName: 'demo-vault',
   rememberedName: 'demo-vault',
   canWrite: true,
-  children: { '': await fakeVault.listDir('') },
+  children: { '': await vault.adapter.listDir('') },
   init: async () => {},
 });
 

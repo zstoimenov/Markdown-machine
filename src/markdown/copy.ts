@@ -1,5 +1,5 @@
-import { countSymbols } from './counts';
-import { toPlainText } from './plaintext';
+import { countSymbols } from './counts.ts';
+import { toPlainText } from './plaintext.ts';
 
 /**
  * Copying the open note out, in one of the two forms it is wanted in. Kept apart

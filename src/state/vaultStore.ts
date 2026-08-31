@@ -5,15 +5,16 @@ import {
   baseName,
   isMarkdownFile,
   parentPath,
+  TRASH_DIR,
   type TreeEntry,
   type VaultAdapter,
-} from '../fs/types';
+} from '../fs/types.ts';
 import type { EditorView } from '@codemirror/view';
-import { canShareFile, downloadText, shareText } from '../fs/singleFileAdapter';
-import { deviceNoteCount, importFile, openDeviceVault } from '../fs/deviceAdapter';
-import { recallNote, rememberNote } from '../fs/handleStore';
-import { diagnose, repair, type RepairIssue } from '../markdown/repair';
-import { toMarkdown } from '../markdown/fromPlainText';
+import { canShareFile, downloadText, shareText } from '../fs/saveOut.ts';
+import { deviceNoteCount, importFile, openDeviceVault } from '../fs/deviceAdapter.ts';
+import { recallNote, rememberNote } from '../fs/handleStore.ts';
+import { diagnose, repair, type RepairIssue } from '../markdown/repair.ts';
+import { toMarkdown } from '../markdown/fromPlainText.ts';
 import {
   forgetVault,
   isSupported,
@@ -21,7 +22,7 @@ import {
   rememberedVaultName,
   reopenVault,
   restoreVault,
-} from '../fs/fsAccessAdapter';
+} from '../fs/fsAccessAdapter.ts';
 
 export type VaultStatus =
   /** Deciding, on first paint, which of the states below we are actually in. */
@@ -97,8 +98,20 @@ interface VaultState {
   saveState: SaveState;
   viewMode: ViewMode;
   error: string | null;
+  /**
+   * Something that happened and went well — where a deleted note was put, say.
+   * Separate from `error` because the status bar styles that as a warning and
+   * announces it as an alert, and neither is true of good news.
+   */
+  notice: string | null;
 
   init: () => Promise<void>;
+  /**
+   * Take a vault and show it. `pick`, `reopen`, `init` and the device path all
+   * end up here; it is exposed so a harness or a test can hand over an adapter
+   * of its own without a native picker in the way.
+   */
+  open: (adapter: VaultAdapter, mode?: VaultMode) => Promise<void>;
   pick: () => Promise<void>;
   reopen: () => Promise<void>;
   close: () => Promise<void>;
@@ -167,17 +180,58 @@ export const useVault = create<VaultState>((set, get) => {
       draft: null,
       modifiedAt: null,
       originals: {},
+      // These describe the open note, so they have to go with it. Left behind,
+      // the repair offer for the last folder's damaged file stayed on screen
+      // over a folder where nothing was open at all.
+      repairs: [],
+      repairDismissed: false,
+      converted: false,
       saveState: { kind: 'idle' },
       error: null,
+      notice: null,
     });
 
     // Back to whatever was open. A reload is rarely something anyone chose —
     // a stray swipe, a discarded tab, a permission that lapsed — and landing on
     // an empty pane makes it cost more than it needs to.
     const last = await recallNote(adapter.name);
-    if (last !== null && roots.some((entry) => entry.path === last)) {
-      await load(last);
+    if (last === null) return;
+    // Notes in folders count too. This used to check `last` against the root
+    // listing, which quietly excluded every note that was not at the top level.
+    if (!(await reveal(adapter, last)) || !(await load(last, { quiet: true }))) {
+      // Moved, renamed or deleted since the last visit. Nothing to say about it
+      // on arrival — just stop pointing at it.
+      await rememberNote(adapter.name, null);
     }
+  }
+
+  /**
+   * Open the tree down to a note's folder, so a restored note is visible in the
+   * sidebar rather than selected inside a folder that is still closed. Returns
+   * false when the path no longer leads anywhere.
+   */
+  async function reveal(adapter: VaultAdapter, path: string): Promise<boolean> {
+    const parent = parentPath(path);
+    if (parent === '') return true;
+
+    const listings: Record<string, TreeEntry[]> = {};
+    const opened: string[] = [];
+    let prefix = '';
+    try {
+      for (const segment of parent.split('/')) {
+        prefix = prefix === '' ? segment : `${prefix}/${segment}`;
+        listings[prefix] = await adapter.listDir(prefix);
+        opened.push(prefix);
+      }
+    } catch {
+      return false;
+    }
+
+    set((state) => ({
+      children: { ...state.children, ...listings },
+      expanded: new Set([...state.expanded, ...opened]),
+    }));
+    return true;
   }
 
   /** Re-read one directory after it changes on disk. */
@@ -192,16 +246,27 @@ export const useVault = create<VaultState>((set, get) => {
     }
   }
 
-  /** Load a file into the buffer, discarding whatever was there. */
-  async function load(path: string) {
+  /**
+   * Load a file into the buffer, discarding whatever was there. Returns whether
+   * the file was actually read; `quiet` suppresses the error banner, for the
+   * restore on launch, where a note that has since moved is not news.
+   */
+  async function load(path: string, options?: { quiet?: boolean }): Promise<boolean> {
     const { adapter } = get();
-    if (!adapter) return;
-    set({ activePath: path, loadingFile: true, source: null, draft: null, error: null });
+    if (!adapter) return false;
+    set({
+      activePath: path,
+      loadingFile: true,
+      source: null,
+      draft: null,
+      error: null,
+      notice: null,
+    });
     void rememberNote(get().vaultName ?? '', path);
     try {
       const { text, modifiedAt } = await adapter.readFile(path);
       // Guard against a slow read landing after the user clicked elsewhere.
-      if (get().activePath !== path) return;
+      if (get().activePath !== path) return false;
       set((state) => {
         // A fresh read establishes a new baseline, so the old undo snapshot has
         // to go with it. Keeping it would let Revert quietly reinstate content
@@ -222,15 +287,18 @@ export const useVault = create<VaultState>((set, get) => {
           converted: false,
         };
       });
+      return true;
     } catch (error) {
-      if (get().activePath !== path) return;
+      if (get().activePath !== path) return false;
       set({
+        activePath: options?.quiet === true ? null : path,
         loadingFile: false,
         source: null,
         draft: null,
         modifiedAt: null,
-        error: `Could not open ${path}: ${describe(error)}`,
+        error: options?.quiet === true ? null : `Could not open ${path}: ${describe(error)}`,
       });
+      return false;
     }
   }
 
@@ -259,6 +327,7 @@ export const useVault = create<VaultState>((set, get) => {
     saveState: { kind: 'idle' },
     viewMode: 'split',
     error: null,
+    notice: null,
 
     async init() {
       if (!isSupported()) {
@@ -285,6 +354,10 @@ export const useVault = create<VaultState>((set, get) => {
       } catch (error) {
         set({ status: 'empty', error: describe(error) });
       }
+    },
+
+    async open(adapter, mode = 'vault') {
+      await adopt(adapter, mode);
     },
 
     async pick() {
@@ -333,8 +406,12 @@ export const useVault = create<VaultState>((set, get) => {
         draft: null,
         modifiedAt: null,
         originals: {},
+        repairs: [],
+        repairDismissed: false,
+        converted: false,
         saveState: { kind: 'idle' },
         error: null,
+        notice: null,
       });
     },
 
@@ -571,6 +648,10 @@ export const useVault = create<VaultState>((set, get) => {
       const original = state.originals[state.activePath];
       if (original === undefined) return;
       set((current) => ({ draft: original, revision: current.revision + 1 }));
+
+      // A no-op while a conflict stands, deliberately: reverting changes what
+      // "mine" is, not which side wins. The bar stays up, and taking "keep mine"
+      // from it writes this reverted text — which is what asking for it meant.
       void get().save();
     },
 
@@ -627,7 +708,20 @@ export const useVault = create<VaultState>((set, get) => {
       try {
         await adapter.renameFile(activePath, target);
         await refreshDir(directory);
-        set({ activePath: target });
+        // The note's history has to move with it. Left under the old key, the
+        // revert snapshot became unreachable — the Revert button simply vanished
+        // mid-edit — and the remembered path pointed at a file that no longer
+        // existed, so the next launch opened nothing.
+        set((current) => {
+          const originals = { ...current.originals };
+          const snapshot = originals[activePath];
+          if (snapshot !== undefined) {
+            originals[target] = snapshot;
+            delete originals[activePath];
+          }
+          return { activePath: target, originals };
+        });
+        void rememberNote(get().vaultName ?? '', target);
       } catch (error) {
         set({
           error:
@@ -643,15 +737,18 @@ export const useVault = create<VaultState>((set, get) => {
       const { adapter, activePath } = state;
       if (!adapter || activePath === null || !state.canWrite) return;
 
-      set({ error: null });
+      set({ error: null, notice: null });
       const confirmed = window.confirm(
-        `Delete "${activePath}"?\n\nThis removes the file from your disk and cannot be undone here.`,
+        `Delete "${activePath}"?\n\n` +
+          `It moves to the ${TRASH_DIR} folder, so you can put it back by hand.`,
       );
       if (!confirmed) return;
 
       const directory = parentPath(activePath);
       try {
-        await adapter.deleteFile(activePath);
+        // Moved rather than removed. Everything else destructive here is one
+        // undo away; delete was the exception, and the confirm dialog said so.
+        const trashed = await adapter.trashFile(activePath);
         set((current) => {
           const originals = { ...current.originals };
           delete originals[activePath];
@@ -661,10 +758,16 @@ export const useVault = create<VaultState>((set, get) => {
             draft: null,
             modifiedAt: null,
             originals,
+            repairs: [],
+            repairDismissed: false,
+            converted: false,
             saveState: { kind: 'idle' },
           };
         });
+        // Nothing to come back to on the next launch.
+        void rememberNote(get().vaultName ?? '', null);
         await refreshDir(directory);
+        set({ notice: `Moved "${baseName(activePath)}" to ${trashed}` });
       } catch (error) {
         set({ error: `Could not delete ${baseName(activePath)}: ${describe(error)}` });
       }

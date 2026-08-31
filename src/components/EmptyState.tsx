@@ -1,4 +1,4 @@
-import { SHORTCUTS } from '../markdown/shortcuts';
+import { SHORTCUTS } from '../markdown/shortcuts.ts';
 
 const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
@@ -18,10 +18,10 @@ export function EmptyState({ message }: { message: string }) {
             <dd>
               {forKeyboard(combo)
                 .split(' ')
-                .map((key, index) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <kbd key={index}>{key}</kbd>
-                ))}
+                // The index is the key because the value is not unique — a
+                // chord can repeat a modifier — and the list is regenerated
+                // whole rather than reordered, so nothing can go stale.
+                .map((key, index) => <kbd key={`${index}-${key}`}>{key}</kbd>)}
             </dd>
           </div>
         ))}

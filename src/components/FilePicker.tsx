@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { isMarkdownFile } from '../fs/types';
-import { useVault } from '../state/vaultStore';
+import { isMarkdownFile } from '../fs/types.ts';
+import { useVault } from '../state/vaultStore.ts';
 
 /**
  * Takes files into the device library, by button or by drop. Only used where

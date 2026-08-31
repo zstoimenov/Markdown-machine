@@ -10,5 +10,6 @@ export const SHORTCUTS: Array<[string, string]> = [
   ['Link', 'Mod K'],
   ['Cycle heading', 'Mod ⇧ H'],
   ['Bullet list', 'Mod ⇧ L'],
+  ['Find in note', 'Mod F'],
   ['Save now', 'Mod S'],
 ];

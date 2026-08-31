@@ -295,6 +295,9 @@ body {
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  /* These rows are treeitems rather than buttons, so that the tree reads and
+     moves like one. A button would not have selected its own label on a drag. */
+  user-select: none;
 }
 
 .tree-row:hover {
@@ -1306,10 +1309,73 @@ body.is-keyboard .app > .notice {
   cursor: pointer;
 }
 
+.status-notice {
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sheet-message {
   margin: 4px 0 8px;
   padding: 10px 18px;
   font-size: 13px;
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* ---------- Focus ---------- */
+
+/**
+ * There was no focus style in this stylesheet at all, so every control fell back
+ * to the browser's default ring — which lands awkwardly on the segmented
+ * control, and all but disappears against `--accent-soft` on the active tree row.
+ *
+ * `:focus-visible` rather than `:focus`, so a mouse click on a button does not
+ * leave a ring behind while a keyboard tab still gets one.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Rows are flush to the sidebar edge, where an outset ring would be clipped. */
+.tree-row:focus-visible,
+.sheet button:focus-visible {
+  outline-offset: -2px;
+  border-radius: 0;
+}
+
+/* The divider is 6px wide, so an offset ring reads as a stripe beside it. */
+.divider:focus-visible {
+  outline-offset: -2px;
+}
+
+/**
+ * The scrim is a full-screen button so a click anywhere dismisses what is over
+ * it. It is not a control anybody means to reach, and ringing the whole viewport
+ * says otherwise.
+ */
+.scrim:focus-visible {
+  outline: none;
+}
+
+/* ---------- Announcements ---------- */
+
+/**
+ * Present to a screen reader, absent from the page. The save state is already
+ * on screen for anyone who can see it; this is for the things that are only
+ * ever said in passing — that a copy was taken, that a write failed.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
