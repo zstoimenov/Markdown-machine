@@ -38,7 +38,7 @@ function Row({ entry, depth }: { entry: TreeEntry; depth: number }) {
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         data-path={entry.path}
         data-kind={entry.kind}
-        onClick={() => (isDir ? toggleDir(entry.path) : openFile(entry.path))}
+        onClick={() => void (isDir ? toggleDir(entry.path) : openFile(entry.path))}
       >
         <span className="tree-icon" aria-hidden="true">
           {isDir ? (expanded ? '▾' : '▸') : '·'}

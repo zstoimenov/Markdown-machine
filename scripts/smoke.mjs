@@ -781,7 +781,16 @@ await phone.evaluate(() => document.documentElement.style.removeProperty('--app-
 await phone.screenshot({ path: `${SP}/smoke-phone.png` });
 await phone.close();
 
-console.log(problems.length ? '\nBrowser problems:\n' + problems.join('\n') : '\nNo console or page errors.');
+// A page error or a console error is a failure, not a footnote. These were
+// collected and printed from the beginning, and the run reported "All checks
+// passed" over the top of them — which is how a 404 the harness had been
+// serving since it was written went unnoticed for as long as it did.
+if (problems.length) {
+  failures += problems.length;
+  console.log('\nBrowser problems:\n' + problems.join('\n'));
+} else {
+  console.log('\nNo console or page errors.');
+}
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
 await browser.close();
 process.exit(failures ? 1 : 0);

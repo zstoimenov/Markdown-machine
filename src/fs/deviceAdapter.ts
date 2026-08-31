@@ -172,7 +172,9 @@ export async function importFile(file: File): Promise<string> {
 }
 
 async function freeName(name: string): Promise<string> {
-  const taken = new Set((await entries(store())).map(([key]) => String(key)));
+  const taken = new Set(
+    (await entries<string, StoredNote>(store())).map(([key]) => String(key)),
+  );
   if (!taken.has(name)) return name;
 
   const cut = name.lastIndexOf('.');

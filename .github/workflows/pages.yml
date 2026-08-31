@@ -34,13 +34,53 @@ jobs:
 
       - run: npm ci
 
-      # The repair logic is pure and unit-tested; a regression there corrupts
-      # notes, so it gates the deploy alongside the typecheck.
+      # There were eslint-disable comments here and no ESLint to read them.
+      - run: npm run lint
+
+      # The markdown logic and the store are unit-tested; a regression in
+      # either corrupts notes, so they gate the deploy alongside the typecheck.
       - run: npm test
 
       # `npm run build` typechecks first, so a type error fails the deploy
       # rather than shipping a broken page.
       - run: npm run build
+
+      # The smoke test drives the real app in a real browser: the conflict
+      # path, revert, rename, delete, the phone layout, the share sheet. It
+      # used to run only when somebody remembered, which is how several bugs
+      # shipped past a suite that was capable of catching them.
+      #
+      # Playwright stays out of package.json on purpose — installing it pulls
+      # a browser download that every contributor would otherwise pay for —
+      # so it is installed here and nowhere else. `--only-shell` fetches the
+      # headless shell rather than full Chromium, which is all this needs.
+      - name: Install a browser for the smoke test
+        run: |
+          npm install --no-save playwright
+          npx playwright install --only-shell --with-deps chromium
+
+      # The dev server, not `vite preview`: the fixture is a second entry point
+      # that only the dev server serves, which is what keeps it out of the
+      # shipped bundle.
+      - name: Smoke test
+        run: |
+          npm run dev -- --port 5173 &
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:5173/dev-fixture.html >/dev/null && break
+            sleep 1
+          done
+          node scripts/smoke.mjs
+        env:
+          SHOTS: ${{ runner.temp }}
+
+      # The screenshots the run takes along the way, for looking at when a
+      # check fails and the message alone is not enough.
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: ${{ runner.temp }}/smoke-*.png
+          if-no-files-found: ignore
 
       - uses: actions/upload-pages-artifact@v3
         with:

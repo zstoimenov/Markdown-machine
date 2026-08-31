@@ -163,9 +163,9 @@ declare global {
   }
 }
 window.mmFixture = {
-  touch: vault.touch,
-  read: vault.read,
-  list: vault.list,
+  touch: (path, text) => vault.touch(path, text),
+  read: (path) => vault.read(path),
+  list: () => vault.list(),
 };
 
 useVault.setState({

@@ -328,11 +328,20 @@ the real app against an in-memory vault — useful for working on the tree, the 
 the styling without clicking through a picker each reload.
 
 `scripts/smoke.mjs` drives that fixture in a real browser and checks the read and edit paths
-end to end. Playwright is not a dependency, since installing it pulls a browser download, so
-run it on demand:
+end to end — the conflict path, revert, rename, delete, the phone layout, the share sheet,
+the keyboard insets. It runs in CI on every push. Playwright is still not a dependency,
+since installing it pulls a browser download every contributor would otherwise pay for, so
+running it locally installs it on demand:
 
 ```sh
 npm install --no-save playwright && npx playwright install chromium
 npm run dev                     # in another terminal
 node scripts/smoke.mjs
 ```
+
+Set `CHROMIUM` to an existing browser binary to skip the download. A console error or an
+uncaught exception fails the run, not just a failed assertion.
+
+The full gate, which is what CI runs, is `npm run lint`, `npm test` and `npm run build` —
+the last of which typechecks first. `npm test` needs Node 22.6 or newer, because it runs the
+TypeScript test files directly.
