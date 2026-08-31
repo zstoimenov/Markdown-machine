@@ -62,6 +62,40 @@ await page.waitForFunction(() => !document.querySelector('.prose h1')?.textConte
 check('undo history survives the render cycle', true);
 await page.screenshot({ path: `${SP}/smoke-split.png` });
 
+// ---------- Find in note ----------
+// The browser's own find cannot reach text CodeMirror has scrolled out of the
+// DOM, which is why this exists at all.
+check('spellcheck is on, which CodeMirror turns off by default',
+  await page.locator('.cm-content').getAttribute('spellcheck') === 'true');
+check('and the platform may correct as you type on a touch keyboard',
+  await page.locator('.cm-content').getAttribute('autocorrect') === 'on');
+
+await page.locator('.cm-content').click();
+await page.keyboard.press('Control+f');
+await page.waitForSelector('.cm-panel.cm-search');
+check('Ctrl+F opens the find panel', await page.locator('.cm-panel.cm-search').isVisible());
+check('and it sits above the editor, clear of the suggestion row',
+  (await page.locator('.cm-panels-top .cm-search').count()) === 1);
+
+await page.locator('.cm-panel.cm-search input[main-field]').fill('blockquote');
+await page.keyboard.press('Enter');
+check('a match is found and highlighted',
+  (await page.locator('.cm-searchMatch').count()) > 0);
+const panelPaint = await page.locator('.cm-panels').evaluate((el) => {
+  // --bg-panel as the page resolves it, rendered through a throwaway element so
+  // the comparison is colour to colour rather than token text to colour.
+  const probe = document.createElement('div');
+  probe.style.backgroundColor = 'var(--bg-panel)';
+  document.body.append(probe);
+  const expected = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  return { actual: getComputedStyle(el).backgroundColor, expected };
+});
+check('the panel takes the app\'s palette rather than CodeMirror default chrome',
+  panelPaint.actual === panelPaint.expected, `${panelPaint.actual} vs ${panelPaint.expected}`);
+await page.keyboard.press('Escape');
+check('Escape closes it again', (await page.locator('.cm-panel.cm-search').count()) === 0);
+
 // ---------- View modes ----------
 await page.getByRole('button', { name: 'Read' }).click();
 check('read mode hides the editor', (await page.locator('.cm-editor').count()) === 0);

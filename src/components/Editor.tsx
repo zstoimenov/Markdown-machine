@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, highlightActiveLine, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { FORMATTING_KEYMAP } from '../markdown/commands.ts';
@@ -33,6 +34,46 @@ const theme = EditorView.theme({
     backgroundColor: 'var(--accent-soft)',
   },
   '.cm-activeLine': { backgroundColor: 'var(--bg-panel)' },
+
+  // The find panel ships with its own light chrome, which reads as a hole in the
+  // page under a dark theme. Same custom properties as everything else, so it
+  // follows the OS switch with the rest of the app.
+  '.cm-panels': {
+    backgroundColor: 'var(--bg-panel)',
+    color: 'var(--text)',
+    fontFamily: 'var(--font-ui)',
+    fontSize: '13px',
+  },
+  '.cm-panels.cm-panels-top': { borderBottom: '1px solid var(--border)' },
+  '.cm-panel.cm-search': { padding: '8px 10px' },
+  '.cm-panel.cm-search label': { color: 'var(--text-muted)' },
+  '.cm-panel.cm-search input, .cm-panel.cm-search button': {
+    fontFamily: 'inherit',
+    fontSize: '13px',
+    color: 'var(--text)',
+    backgroundColor: 'var(--bg-raised)',
+    border: '1px solid var(--border-strong)',
+    borderRadius: '5px',
+    padding: '4px 8px',
+    margin: '0 4px 0 0',
+  },
+  '.cm-panel.cm-search input:focus-visible, .cm-panel.cm-search button:focus-visible': {
+    outline: '2px solid var(--accent)',
+    outlineOffset: '1px',
+  },
+  '.cm-panel.cm-search button[name="close"]': {
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-muted)',
+    // The default sits half outside the panel and is hard to hit on a phone.
+    padding: '2px 8px',
+  },
+  '.cm-searchMatch': { backgroundColor: 'var(--accent-soft)' },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'var(--accent)',
+    color: 'var(--accent-contrast)',
+  },
+  '.cm-selectionMatch': { backgroundColor: 'var(--accent-soft)' },
 });
 
 const highlightStyle = HighlightStyle.define([
@@ -136,8 +177,38 @@ export function Editor({ initialDoc, onChange, onViewReady, onContext, onPaste }
           history(),
           drawSelection(),
           highlightActiveLine(),
-          // Formatting comes first so its bindings win over any default sharing a chord.
-          keymap.of([...FORMATTING_KEYMAP, ...defaultKeymap, ...historyKeymap]),
+          /**
+           * Find and replace, inside the open note.
+           *
+           * The browser's own Ctrl+F is not a substitute and never was:
+           * CodeMirror renders only the slice of the document that is on screen,
+           * so find-in-page cannot see a word that is scrolled away. In a long
+           * note there was no way to find anything at all.
+           *
+           * `top` because a panel at the bottom of the editor would land under
+           * the suggestion row, and under the keyboard on a phone.
+           */
+          search({ top: true }),
+          highlightSelectionMatches(),
+          /**
+           * Spellcheck, which CodeMirror turns off by default — the right call
+           * for code and the wrong one for prose. The other two matter on a
+           * phone, where the platform's corrections are most of what makes a
+           * touch keyboard usable, and were being refused along with it.
+           */
+          EditorView.contentAttributes.of({
+            spellcheck: 'true',
+            autocorrect: 'on',
+            autocapitalize: 'sentences',
+          }),
+          // Formatting comes first so its bindings win over any default sharing
+          // a chord, and search before the defaults for the same reason.
+          keymap.of([
+            ...FORMATTING_KEYMAP,
+            ...searchKeymap,
+            ...defaultKeymap,
+            ...historyKeymap,
+          ]),
           markdown({ base: markdownLanguage }),
           EditorView.lineWrapping,
           syntaxHighlighting(highlightStyle),
