@@ -265,10 +265,12 @@ kbd,
   background: var(--bg-panel);
   border-top: 1px solid var(--border-strong);
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  /* Not uppercased, unlike the labels elsewhere: this row is content. The path
+     is a filename that is case-sensitive on disk, the notice quotes another
+     one, and the save state is a sentence — none of them should be shouted. */
+  letter-spacing: 0.03em;
 }
 
 .status-path {
@@ -763,13 +765,16 @@ body.is-dragging {
 }
 
 .segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0 0 5px;
+  padding: 0;
   border: 0;
-  border-bottom: 1px solid transparent;
   background: none;
   color: var(--text-muted);
   cursor: pointer;
@@ -781,7 +786,18 @@ body.is-dragging {
 
 .segment.is-on {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+}
+
+/* The rule hugs the word rather than the bottom of the button, so the target
+   can grow to a thumb without the underline drifting away from the text. */
+.segment.is-on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 0.8em);
+  height: 1px;
+  background: var(--accent);
 }
 
 /* The row of verbs that follows it keeps its own hairline. */
@@ -1121,6 +1137,11 @@ kbd {
   .segmented {
     gap: 13px;
     margin-left: 0;
+  }
+
+  /* A thumb, not a word. */
+  .segment {
+    height: 44px;
   }
 
   .segmented + .toolbar-actions {
