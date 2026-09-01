@@ -1,4 +1,4 @@
-import { useIsNarrow } from '../hooks/useMediaQuery.ts';
+import { useIsDrawer, useIsNarrow } from '../hooks/useMediaQuery.ts';
 import { baseName } from '../fs/types.ts';
 import { canShareFile } from '../fs/saveOut.ts';
 import { CopyButton } from './CopyButton.tsx';
@@ -31,6 +31,7 @@ function SaveDot() {
 
 export function Toolbar() {
   const narrow = useIsNarrow();
+  const drawer = useIsDrawer();
   const sidebarOpen = useVault((s) => s.sidebarOpen);
   const setSidebarOpen = useVault((s) => s.setSidebarOpen);
   const vaultName = useVault((s) => s.vaultName);
@@ -46,12 +47,14 @@ export function Toolbar() {
   const close = useVault((s) => s.close);
   const downloadActive = useVault((s) => s.downloadActive);
 
-  // On a phone the folder's name is trivia and the note's name is where you are.
-  const title = narrow && activePath !== null ? baseName(activePath) : vaultName;
+  // With the index drawered there is nothing on screen saying which note is
+  // open, so the toolbar says it. The folder's name is trivia by comparison —
+  // and it is still one tap away, at the top of the drawer.
+  const title = drawer && activePath !== null ? baseName(activePath) : vaultName;
 
   return (
     <header className="toolbar">
-      {narrow && (
+      {drawer && (
         <button
           type="button"
           className="icon-button"

@@ -9,7 +9,7 @@ import { RepairBar } from './components/RepairBar.tsx';
 import { EmptyState } from './components/EmptyState.tsx';
 import { FilePicker } from './components/FilePicker.tsx';
 import { FallbackNotice } from './components/FallbackNotice.tsx';
-import { useIsNarrow } from './hooks/useMediaQuery.ts';
+import { useIsDrawer } from './hooks/useMediaQuery.ts';
 import { useAutosave, useUnsavedChangesWarning } from './hooks/useAutosave.ts';
 import { useKeyboardInsets } from './hooks/useViewport.ts';
 
@@ -40,7 +40,7 @@ export function App() {
   const source = useVault((s) => s.source);
   const loadingFile = useVault((s) => s.loadingFile);
   const dirty = useVault(isDirty);
-  const narrow = useIsNarrow();
+  const drawer = useIsDrawer();
   const sidebarOpen = useVault((s) => s.sidebarOpen);
   const setSidebarOpen = useVault((s) => s.setSidebarOpen);
   const mode = useVault((s) => s.mode);
@@ -149,10 +149,10 @@ export function App() {
       <div className="workspace">
         {/* When closed at phone widths the drawer is `visibility: hidden`, which
             takes its buttons out of the tab order without a React 18 `inert`. */}
-        <aside className={`sidebar${narrow && sidebarOpen ? ' is-open' : ''}`}>
+        <aside className={`sidebar${drawer && sidebarOpen ? ' is-open' : ''}`}>
           <FileTree />
         </aside>
-        {narrow && sidebarOpen && (
+        {drawer && sidebarOpen && (
           <button
             type="button"
             className="scrim"

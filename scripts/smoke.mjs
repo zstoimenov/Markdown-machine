@@ -879,6 +879,49 @@ await phone.evaluate(() => document.documentElement.style.removeProperty('--app-
 await phone.screenshot({ path: `${SP}/smoke-phone.png` });
 await phone.close();
 
+// ---------- The tablet, where the index is a drawer but the panes are not ----------
+
+/**
+ * Two breakpoints, not one. A tablet held upright has room for two panes and no
+ * room for a permanent index beside them, so the drawer arrives well before the
+ * split view goes — and the button that opens the drawer has to arrive with it,
+ * or the tree is hidden with no way back to it.
+ */
+const tablet = await browser.newPage({ viewport: { width: 820, height: 1180 } });
+await tablet.goto(`${BASE}/dev-fixture.html`, { waitUntil: 'load' });
+await tablet.waitForSelector('.toolbar');
+
+check('the index is a drawer on a tablet',
+  await tablet.evaluate(() => getComputedStyle(document.querySelector('.sidebar')).position) === 'fixed');
+check('and there is a button to open it',
+  (await tablet.getByRole('button', { name: 'Notes' }).count()) === 1);
+await tablet.getByRole('button', { name: 'Notes' }).click();
+await tablet.waitForFunction(() => getComputedStyle(document.querySelector('.sidebar')).visibility === 'visible');
+await tablet.locator('.tree-row', { hasText: 'Welcome.md' }).click();
+await tablet.waitForFunction(() => getComputedStyle(document.querySelector('.sidebar')).visibility === 'hidden');
+check('choosing a note closes it again', true);
+
+// The mode switch only exists once a note is open, which is why this waits.
+check('the panes are still two panes at this width',
+  (await tablet.locator('.segment', { hasText: 'Split' }).count()) === 1);
+
+// The row grew a button; it has to still fit, and the note's name has to be in
+// it, since with the tree away nothing else says which note is open.
+check('the toolbar still fits',
+  await tablet.evaluate(() => {
+    const tb = document.querySelector('.toolbar');
+    return tb.scrollWidth <= tb.clientWidth + 1;
+  }));
+check('and names the note, not the folder',
+  (await tablet.locator('.vault-name').innerText()) === 'Welcome.md');
+
+// The whole point: the content gets the width the index was holding.
+check('the content takes the full width',
+  await tablet.evaluate(() => Math.round(document.querySelector('.reader').getBoundingClientRect().width)) === 820);
+
+await tablet.screenshot({ path: `${SP}/smoke-tablet.png` });
+await tablet.close();
+
 // A page error or a console error is a failure, not a footnote. These were
 // collected and printed from the beginning, and the run reported "All checks
 // passed" over the top of them — which is how a 404 the harness had been

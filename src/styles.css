@@ -1078,8 +1078,16 @@ kbd {
   cursor: pointer;
 }
 
-@media (max-width: 720px) {
-  /* One column: the tree becomes a drawer over the content rather than beside it. */
+/* ---------- The index, where there is no room for it ---------- */
+
+/**
+ * A tablet has room for two panes but not for two panes and a permanent 248px
+ * index beside them, so below this the index becomes a drawer over the content
+ * and the toolbar grows the button that opens it. Everything about the panes
+ * themselves is a separate question, answered lower down at a narrower width.
+ */
+@media (max-width: 1024px) {
+  /* One column: the tree is over the content rather than beside it. */
   .workspace {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1107,19 +1115,14 @@ kbd {
     transform: none;
   }
 
-  .toolbar {
-    gap: 10px;
-    padding: 0 6px 0 4px;
-    height: 44px;
-  }
-
-  /* The wordmark is the first thing to go; which note this is, is the useful one
-     — and it takes whatever the buttons either side of it do not need. */
+  /* The wordmark is the first thing to go: the drawer button and the note's
+     name identify the app between them, and the row is now a button wider. */
   .brand {
     display: none;
   }
 
-  /* Not a subtitle any more — it is the title of the page you are on. */
+  /* Not a subtitle any more — it is the title of the note you are in, which is
+     the one thing the hidden index was still telling you. */
   .vault-name {
     flex: 1;
     min-width: 0;
@@ -1132,6 +1135,31 @@ kbd {
 
   .brand + .vault-name::before {
     display: none;
+  }
+
+  /* The drawer is opened, tapped once and dismissed, so its rows are targets
+     rather than a list to scan — thumb-sized whatever is pointing at them. */
+  .tree-row {
+    padding: 0 18px;
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .tree-actions {
+    padding: 0 18px 14px;
+  }
+
+  .link-button {
+    padding: 8px 0;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    gap: 10px;
+    padding: 0 6px 0 4px;
+    height: 44px;
   }
 
   .segmented {
@@ -1151,22 +1179,6 @@ kbd {
 
   .toolbar-actions {
     gap: 0;
-  }
-
-  /* Comfortable thumb targets, and no iOS zoom-on-focus at 16px. */
-  .tree-row {
-    padding: 0 18px;
-    height: 44px;
-    font-size: 15px;
-  }
-
-  .tree-actions {
-    padding: 0 18px 14px;
-  }
-
-  .link-button {
-    padding: 8px 0;
-    font-size: 11px;
   }
 
   .divider {
