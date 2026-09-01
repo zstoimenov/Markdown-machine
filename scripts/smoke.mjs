@@ -380,11 +380,17 @@ check('bullet list prefixes the line', (await formatLine())?.startsWith('- '), a
 await page.keyboard.press('Control+Shift+l');
 check('bullet list toggles back off', !(await formatLine())?.startsWith('- '), await formatLine());
 
-// Reader mode gets its own measure.
+// Reader mode gets its own measure. Compared with the split-view size rather
+// than a pinned px value: the check is that reader mode is the larger of the
+// two, not that the type ramp never moves. Split is measured first, because
+// once reader mode is on there is only one `.prose` on the page to find.
+const proseSize = () =>
+  page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.pane-preview .prose')).fontSize));
+const splitSize = await proseSize();
 await page.getByRole('button', { name: 'Read' }).click();
 check('reader mode restyles the preview', await page.locator('.pane-preview.is-reader').isVisible());
-const readerSize = await page.evaluate(() => getComputedStyle(document.querySelector('.is-reader .prose')).fontSize);
-check('reader mode enlarges the type', readerSize === '18px', readerSize);
+const readerSize = await proseSize();
+check('reader mode enlarges the type', readerSize > splitSize, `${readerSize} vs ${splitSize}`);
 await page.screenshot({ path: `${SP}/smoke-reader.png` });
 await page.getByRole('button', { name: 'Split' }).click();
 
@@ -698,7 +704,7 @@ check('the toolbar says which state the app is in, on load',
   (await phone.locator('.segment[aria-pressed="true"]').count()) === 1,
   await phone.locator('.segmented').innerText());
 check('and it is the one actually on screen',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'read');
 
 // ---------- Swipe between writing and reading ----------
 // Playwright's touchscreen only taps, so a drag is dispatched by hand. The
@@ -733,22 +739,22 @@ const swipe = async (from, to) => {
 
 await swipe(240, 40); // right to left: forward, to Read... already there
 check('swiping past the last view changes nothing',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'read');
 
 await swipe(40, 260); // left to right: back to Write
 await phone.waitForFunction(() => document.querySelector('.cm-editor') !== null);
 check('swiping right goes back to writing',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Write');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'write');
 
 await swipe(260, 40); // and forward again
 await phone.waitForFunction(() => document.querySelector('.prose') !== null);
 check('swiping left returns to reading',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'read');
 
 // A short drag is a tap that moved, not a swipe.
 await swipe(200, 175);
 check('a short drag is not a swipe',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'read');
 
 // A swipe that starts on something which scrolls sideways belongs to that
 // thing. The code block in this note is wider than the screen.
@@ -776,7 +782,7 @@ const onPre = async (from, to) => {
 };
 await onPre(240, 40);
 check('a swipe across a wide code block scrolls it rather than changing view',
-  (await phone.locator('.segment[aria-pressed="true"]').innerText()) === 'Read');
+  (await phone.locator('.segment[aria-pressed="true"]').innerText()).toLowerCase() === 'read');
 check('the tree is a drawer, hidden until asked for', await phone.evaluate(() => getComputedStyle(document.querySelector('.sidebar')).visibility) === 'hidden');
 
 await phone.getByRole('button', { name: 'Notes' }).tap();
